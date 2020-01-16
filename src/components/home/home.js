@@ -18,7 +18,7 @@ export default class Home extends React.Component {
                     Welcome
                 </h1>
                 <h3>
-                    <Link to = "/login">Login</Link> <Link to = "/login/signUp">Sign Up</Link>
+                    <Link to = "/signIn">Login</Link> <Link to = "/signUp">Sign Up</Link>
                 </h3>
                 <h1>
                     Players Digital Binder
