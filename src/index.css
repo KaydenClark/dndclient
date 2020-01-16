@@ -5,7 +5,11 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+<<<<<<< Updated upstream
   background-color: #F2ECE4
+=======
+  /* background-color: aqua; */
+>>>>>>> Stashed changes
 }
 
 code {
