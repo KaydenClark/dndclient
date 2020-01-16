@@ -6,7 +6,7 @@ import {
 import axios from 'axios'
 import { Auth } from '../context/auth'
 
-const API = ''
+const API = 'http://localhost:5000/signUp'
 
 
 export const SignUp = () => {
@@ -25,12 +25,12 @@ export const SignUp = () => {
         })
     }
 
-    let { from } = location.state || { from: { pathname: "/" } };
+    let { from } = location.state || { from: { pathname: "/signIn" } };
     let signUp = (event, contextFunc) => {
         event.preventDefault()
         if(password === passwordConfirm){
             alert("New user Made: " + email)
-            // postSignUpAxios()
+            postSignUpAxios()
             contextFunc(() => {
                 history.replace(from);
             });
