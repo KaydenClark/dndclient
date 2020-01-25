@@ -1,0 +1,46 @@
+.nav{
+    
+    width: 100vw;
+}
+
+.ulList{
+    /* background-color: #ED1C24; */
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    width: 100vw;
+}
+
+.liList:hover {
+    /* background-color: #F15025; */
+}
+
+.link:hover{
+    color: #0A0A0A;
+    text-decoration: none;
+}
+
+.liList{
+    font-family: 'Times New Roman', Times, serif;
+    float: left;
+}
+
+.liListRight{
+    float: right;
+}
+
+.link{
+    display: block;
+    color: #F7F7F7;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+    font-size: 20px;
+}
+
+#HamMenu{
+    width: 50px;
+    margin-top: 5px;
+    float: right;
+}
