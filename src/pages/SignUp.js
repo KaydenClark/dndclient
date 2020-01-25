@@ -19,10 +19,11 @@ export const SignUp = () => {
 
     const postSignUpAxios = async () => {
         console.log('connected to server to create new user')
-        await axios.post(API, {
+        const result = await axios.post(API, {
             userName: email,
             hash: password
         })
+        return result
     }
 
     let { from } = location.state || { from: { pathname: "/signIn" } };

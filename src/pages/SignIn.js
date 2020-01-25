@@ -17,7 +17,7 @@ export const SignIn = () => {
 
     const postSignInAxios = async () => {
         console.log("connected to server to validate Login")
-        const post = await axios.post(API, {
+        const result = await axios.post(API, {
             userName: email,
             hash: password
         })
@@ -31,7 +31,7 @@ export const SignIn = () => {
                 return false
             }
         })
-        return post
+        return result
     }
 
     let { from } = location.state || { from: { pathname: "/" } };
