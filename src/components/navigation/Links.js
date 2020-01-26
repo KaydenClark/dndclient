@@ -7,6 +7,14 @@ export const Links = () => {
     return (
         <div>
             <ul className= "ulList">
+                <li className= "title"> 
+                    <Link to= '/about' className= "link"> Players Digital Binder </Link>
+                </li>
+                <li className= "search">
+                    <form className= "linkSearch">
+                        <input placeholder= "Search..." />
+                    </form>
+                </li>
                 <li className= "liList">
                     <Link className= "link" to= "/">Home</Link>
                 </li>
