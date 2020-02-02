@@ -28,6 +28,7 @@ export const SignUp = () => {
             userName: email,
             hash: password
         })
+        return result
     }
 
     let { from } = location.state || { from: { pathname: "/signIn" } };

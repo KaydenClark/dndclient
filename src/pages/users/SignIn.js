@@ -30,20 +30,28 @@ export const SignIn = () => {
             // console.log(res.data)
             if(res.data){
                 console.log(true)
+                return true
             }else {
                 console.log(false)
+                return false
             }
         })
+        return result
     }
 
     let { from } = location.state || { from: { pathname: "/" } };
     let signIn = async (event, contextFunc) => {
         event.preventDefault()
+        const valid = await postSignInAxios()
+        if (valid){
         alert("Signed In" + email)
         await postSignInAxios()
         contextFunc(() => {
             history.replace(from);
         });
+        } else {
+            alert("invaid user and password")
+    }
     };
     
     return (
