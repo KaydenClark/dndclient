@@ -7,9 +7,10 @@ import {
     // Redirect
   } from "react-router-dom";
 // import PrivateRoute from './PrivateRoute'
-import { SignIn } from '../../pages/SignIn'
-import { SignUp } from '../../pages/SignUp'
-import Home from '../home/home'
+import { SignIn } from '../../pages/users/SignIn'
+import { SignUp } from '../../pages/users/SignUp'
+import Home from '../../pages/home/home'
+import Characters from '../../pages/characters/characters'
 
 
 export const Routes = () => {
@@ -27,7 +28,7 @@ export const Routes = () => {
                     <SignUp />
                 </Route>
                 <Route path= "/dnd">
-                    <h1>Hello World</h1>
+                    <CharacterSheets />
                 </Route>
             </Switch>
         </div>
@@ -37,5 +38,11 @@ export const Routes = () => {
 const HomePage = () => {
     return(
         <Home />
+    )
+}
+
+const CharacterSheets = () => {
+    return(
+        <Characters />
     )
 }

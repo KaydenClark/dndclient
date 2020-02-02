@@ -4,9 +4,14 @@ import {
     useLocation
 } from "react-router-dom";
 import axios from 'axios'
-import { Auth } from '../context/auth'
+import { Auth } from '../../context/auth'
+import '../../styles/sign.css'
+import {
+    base, 
+    // currentAPI
+} from '../../components/const'
 
-const API = 'http://localhost:5000/signIn'
+const API = base
 
 export const SignIn = () => {
     const [email, setEmail] = useState('')
@@ -17,13 +22,13 @@ export const SignIn = () => {
 
     const postSignInAxios = async () => {
         console.log("connected to server to validate Login")
-        await axios.post(API, {
+        await axios.post(`${API}/signIn`, {
             userName: email,
             hash: password
         })
         .then(function(res) {
-            console.log(res.data)
-            if(res.data === 'Vaild user and password'){
+            // console.log(res.data)
+            if(res.data){
                 console.log(true)
             }else {
                 console.log(false)
@@ -35,7 +40,7 @@ export const SignIn = () => {
     let signIn = async (event, contextFunc) => {
         event.preventDefault()
         alert("Signed In" + email)
-        console.log(await postSignInAxios())
+        await postSignInAxios()
         contextFunc(() => {
             history.replace(from);
         });
@@ -44,10 +49,10 @@ export const SignIn = () => {
     return (
         <Auth.Consumer>
             {({ authenticate }) =>(
-            <div  className= "SignInForm">
+            <div  className= "loginForm">
                 <h1> Sign In </h1>
                 <form onSubmit={(event) => signIn(event, authenticate)}>
-                <input id= "username" type="email" placeholder="Username" onChange= { event => {
+                <input id= "username" type="email" placeholder="Email" onChange= { event => {
                         const userName = event.target.value
                         setEmail(userName)
                         // console.log(email)

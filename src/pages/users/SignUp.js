@@ -4,9 +4,14 @@ import {
     useLocation
 } from "react-router-dom";
 import axios from 'axios'
-import { Auth } from '../context/auth'
+import { Auth } from '../../context/auth'
+import '../../styles/sign.css'
+import {
+    base, 
+    // currentAPI
+} from '../../components/const'
 
-const API = 'http://localhost:5000/signUp'
+const API = base
 
 
 export const SignUp = () => {
@@ -19,7 +24,7 @@ export const SignUp = () => {
 
     const postSignUpAxios = async () => {
         console.log('connected to server to create new user')
-        await axios.post(API, {
+        await axios.post(`${API}/signUp`, {
             userName: email,
             hash: password
         })
@@ -45,7 +50,7 @@ export const SignUp = () => {
             <div  className= "loginForm">
                 <h1> Sign Up </h1>
                 <form onSubmit={(event) => signUp(event, authenticate)}>
-                    <input id= "username" type="email" placeholder="Username" onChange= { event => {
+                    <input id= "username" type="email" placeholder="Email" onChange= { event => {
                         const userName = event.target.value
                         setEmail(userName)
                         // console.log(email)
