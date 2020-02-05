@@ -3,6 +3,7 @@ import axios from 'axios'
 import {
     base
 } from '../../components/const'
+import CharacterSheet from '../../components/characters/characterSheet'
 
 const PDBAPI = base
 
@@ -10,27 +11,33 @@ export default class Characters extends React.Component {
     constructor(props){
         super(props)
         this.state = {
-            sheets: []
+            sheets: [],
+            characters: []
         } //State
     } // Constructor
 
-    renderCharacters = (characters) => {
-        console.log(characters)
-        // this.setState({characters})
+    renderCharacters = async (characters) => {
+        console.log('rednering characters...')
+        const sheets = await characters.map((sheet) =>
+            <CharacterSheet 
+                key= {sheet._id}
+                data= {sheet} 
+            />)
+        console.log('Characters Rendered')
+        console.log(sheets)
+        this.setState({sheets})
     } //Render Characters
 
     getCharactersAxios = async () => {
         console.log('Connecting to get characters...')
-        const [characters] = await Promise.all([
-            axios.get(`${PDBAPI}/player/allPlayerData`),
-        ])
-        // console.log(characters.data.data)
+        const characters = await axios.get(`${PDBAPI}/player/allPlayerData`)
+        // console.log(characters.data.data[0]._id)
         this.renderCharacters(characters.data.data)
     } // Get Characters
 
     componentDidMount = async () => {
         await this.getCharactersAxios()
-        this.renderCharacters()
+        // this.renderCharacters()
     } //Component Did Mount
 
     render(){

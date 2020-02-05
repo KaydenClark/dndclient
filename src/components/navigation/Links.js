@@ -8,7 +8,7 @@ export const Links = () => {
         <div>
             <ul className= "ulList">
                 <li className= "title"> 
-                    <Link to= '/about' className= "link"> Players Digital Binder </Link>
+                    <Link to= '/' className= "link"> Players Digital Binder </Link>
                 </li>
                 <li className= "search">
                     <form className= "linkSearch">

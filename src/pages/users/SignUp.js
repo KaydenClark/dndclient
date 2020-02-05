@@ -24,7 +24,7 @@ export const SignUp = () => {
 
     const postSignUpAxios = async () => {
         console.log('connected to server to create new user')
-        await axios.post(`${API}/signUp`, {
+        const result = await axios.post(`${API}/signUp`, {
             userName: email,
             hash: password
         })

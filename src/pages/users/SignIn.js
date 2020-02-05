@@ -22,17 +22,17 @@ export const SignIn = () => {
 
     const postSignInAxios = async () => {
         console.log("connected to server to validate Login")
-        await axios.post(`${API}/signIn`, {
+        const result = await axios.post(`${API}/signIn`, {
             userName: email,
             hash: password
         })
         .then(function(res) {
             // console.log(res.data)
             if(res.data){
-                console.log(true)
+                // console.log(true)
                 return true
             }else {
-                console.log(false)
+                // console.log(false)
                 return false
             }
         })
@@ -43,9 +43,10 @@ export const SignIn = () => {
     let signIn = async (event, contextFunc) => {
         event.preventDefault()
         const valid = await postSignInAxios()
+        // console.log(await postSignInAxios())
         if (valid){
         alert("Signed In" + email)
-        await postSignInAxios()
+        // await postSignInAxios()
         contextFunc(() => {
             history.replace(from);
         });
