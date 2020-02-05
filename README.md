@@ -5,3 +5,6 @@ The DM may set up an account and invite players to join, the DM and the player h
 This is a Players Digital Binder (PDB)
 
 Suggestions are welcome, just contact me at kaydenclark725@gmail.com
+
+Intergrated with the DND5eapi (http://dnd5eapi.co/api/)
+
