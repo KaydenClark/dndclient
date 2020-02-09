@@ -27,12 +27,10 @@ export const SignIn = () => {
             hash: password
         })
         .then(function(res) {
-            // console.log(res.data)
             if(res.data){
-                // console.log(true)
+                localStorage.setItem('jwt', res.data)
                 return true
             }else {
-                // console.log(false)
                 return false
             }
         })

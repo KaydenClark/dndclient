@@ -16,10 +16,13 @@ export const Links = () => {
                     </form>
                 </li>
                 <li className= "liList">
-                    <Link className= "link" to= "/">Home</Link>
+                    <Link className= "link" to= "/player">Player</Link>
                 </li>
                 <li className= "liList">
-                    <Link className= "link" to= "/dnd">D&D</Link>
+                    <Link className= "link" to= "/equipment">Equipment</Link>
+                </li>
+                <li className= "liList">
+                    <Link className= "link" to= "/spells">Spells</Link>
                 </li>
             </ul>
         </div>

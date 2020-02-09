@@ -30,7 +30,12 @@ export default class Characters extends React.Component {
 
     getCharactersAxios = async () => {
         console.log('Connecting to get characters...')
-        const characters = await axios.get(`${PDBAPI}/player/allPlayerData`)
+        const characters = 
+        await axios.get(`${PDBAPI}/player`, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem('jwt')}`
+            }
+        })
         // console.log(characters.data.data[0]._id)
         this.renderCharacters(characters.data.data)
     } // Get Characters
