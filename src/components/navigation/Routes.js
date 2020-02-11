@@ -10,7 +10,7 @@ import {
 import { SignIn } from '../../pages/users/SignIn'
 import { SignUp } from '../../pages/users/SignUp'
 import Home from '../../pages/home/home'
-import Characters from '../../pages/characters/characters'
+import CharactersList from '../../pages/characters/charactersList'
 
 
 export const Routes = () => {
@@ -28,7 +28,7 @@ export const Routes = () => {
                     <SignUp />
                 </Route>
                 <Route path= "/player">
-                    <CharacterSheets />
+                    <CharacterSheetsList />
                 </Route>
             </Switch>
         </div>
@@ -41,8 +41,8 @@ const HomePage = () => {
     )
 }
 
-const CharacterSheets = () => {
+const CharacterSheetsList = () => {
     return(
-        <Characters />
+        <CharactersList />
     )
 }

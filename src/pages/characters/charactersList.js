@@ -7,7 +7,7 @@ import CharacterSheet from '../../components/characters/characterSheet'
 
 const PDBAPI = base
 
-export default class Characters extends React.Component {
+export default class CharactersList extends React.Component {
     constructor(props){
         super(props)
         this.state = {
@@ -36,19 +36,18 @@ export default class Characters extends React.Component {
                 Authorization: `Bearer ${localStorage.getItem('jwt')}`
             }
         })
-        // console.log(characters.data.data[0]._id)
         this.renderCharacters(characters.data.data)
     } // Get Characters
 
     componentDidMount = async () => {
         await this.getCharactersAxios()
-        // this.renderCharacters()
     } //Component Did Mount
 
     render(){
 
         return(
             <div className= "Characters">
+                <button> Create New Character </button>
                 {this.state.sheets}
             </div>
         ) // Return
