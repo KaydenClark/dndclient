@@ -17,7 +17,7 @@
     background-color: #F15025;
 } */
 
-.link:hover{
+.link:hover, .NavButton:hover{
     color: #ED1C24;
     text-decoration: none;
 }
@@ -34,6 +34,13 @@
     padding: 14px 16px;
     text-decoration: none;
     font-size: 24px;
+}
+
+.NavButton{
+    display: block;
+    color: #F7F7F7;
+    text-align: center;
+    padding: 14px 16px;
 }
 
 .title{

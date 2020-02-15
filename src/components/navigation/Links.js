@@ -16,6 +16,9 @@ export const Links = () => {
                     </form>
                 </li>
                 <li className= "liList">
+                    <button className= "NavButton">|||</button>
+                </li>
+                <li className= "liList">
                     <Link className= "link" to= "/player">Player</Link>
                 </li>
                 <li className= "liList">
