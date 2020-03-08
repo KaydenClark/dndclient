@@ -27,7 +27,7 @@ export const Routes = () => {
                 <Route path= "/signUp">
                     <SignUp />
                 </Route>
-                <Route path= "/player">
+                <Route path= "/Character">
                     <CharacterSheetsList />
                 </Route>
             </Switch>
