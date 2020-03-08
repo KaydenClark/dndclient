@@ -18,6 +18,7 @@ export const SignUp = () => {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [passwordConfirm, setPasswordConfirm] = useState('')
+    const [userName, setUserName] = useState('')
 
     let history = useHistory();
     let location = useLocation();
@@ -25,7 +26,8 @@ export const SignUp = () => {
     const postSignUpAxios = async () => {
         console.log('connected to server to create new user')
         const result = await axios.post(`${API}/signUp`, {
-            userName: email,
+            userName: userName,
+            email: email, 
             hash: password
         })
         return result
@@ -51,11 +53,16 @@ export const SignUp = () => {
             <div  className= "loginForm">
                 <h1> Sign Up </h1>
                 <form onSubmit={(event) => signUp(event, authenticate)}>
-                    <input id= "username" type="email" placeholder="Email" onChange= { event => {
-                        const userName = event.target.value
-                        setEmail(userName)
+                    <input id= "email" type="email" placeholder="Email" onChange= { event => {
+                        const email = event.target.value
+                        setEmail(email)
                         // console.log(email)
                     }}/> 
+                    <input id= "userName" type="text" placeholder="User Name" onChange= { event => {
+                        const userName = event.target.value
+                        setUserName(userName)
+                        // console.log(email)
+                    }}/>
                     <input id= "password" type="password" placeholder="Password" onChange= { event => {
                         const pswd = event.target.value
                         setPassword(pswd)

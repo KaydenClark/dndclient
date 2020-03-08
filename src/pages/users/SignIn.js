@@ -23,7 +23,7 @@ export const SignIn = () => {
     const postSignInAxios = async () => {
         console.log("connected to server to validate Login")
         const result = await axios.post(`${API}/signIn`, {
-            userName: email,
+            email: email,
             hash: password
         })
         .then(function(res) {
@@ -59,9 +59,9 @@ export const SignIn = () => {
             <div  className= "loginForm">
                 <h1> Sign In </h1>
                 <form onSubmit={(event) => signIn(event, authenticate)}>
-                <input id= "username" type="email" placeholder="Email" onChange= { event => {
-                        const userName = event.target.value
-                        setEmail(userName)
+                <input id= "email" type="email" placeholder="Email" onChange= { event => {
+                        const email = event.target.value
+                        setEmail(email)
                         // console.log(email)
                     }}/> 
                 <input id= "password" type="password" placeholder="Password" onChange= { event => {
