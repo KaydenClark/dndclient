@@ -8,7 +8,7 @@
     text-align: center;
 }
 
-.loginForm input[type= "email"], .loginForm input[type= "password"]{
+.loginForm input[type= "email"], .loginForm input[type= "password"], .loginForm input[type= "text"]{
     border: 0;
     background: none;
     display: block;
