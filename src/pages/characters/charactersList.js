@@ -36,7 +36,7 @@ export default class CharactersList extends React.Component {
                 Authorization: `Bearer ${localStorage.getItem('jwt')}`
             }
         })
-        this.renderCharacters(characters.data.data)
+        this.renderCharacters(characters.data)
     } // Get Characters
 
     componentDidMount = async () => {

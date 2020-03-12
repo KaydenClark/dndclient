@@ -34,14 +34,20 @@ export const SignUp = () => {
     }
 
     let { from } = location.state || { from: { pathname: "/signIn" } };
-    let signUp = (event, contextFunc) => {
+    let signUp = async (event, contextFunc) => {
         event.preventDefault()
         if(password === passwordConfirm){
-            alert("New user Made: " + email)
-            postSignUpAxios()
-            contextFunc(() => {
-                history.replace(from);
-            });
+            let makeUser = await postSignUpAxios()
+            console.log(makeUser)
+            if(makeUser.data){
+                alert("New user Made: " + email)
+                contextFunc(() => {
+                    history.replace(from);
+                })
+            } else {
+                alert("User exsists")
+            }
+;
         } else {
             alert("Passwords do not match")
         }

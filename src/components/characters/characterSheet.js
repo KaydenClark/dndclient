@@ -26,8 +26,8 @@ export default class CharacterSheet extends React.Component {
                 <h1>
                     Characters Name: 
                     <Link 
-                    to= {{pathname: './'+this.props.data.userName+'/'+this.props.data.characterName+this.props.data._id}}
-                    >{this.props.data.characterName}</Link>
+                    to= {{pathname: './'+this.props.data.userName+'/'+this.props.data.characterName+'/'+this.props.data._id}}
+                    >{` ${this.props.data.characterName}`}</Link>
                 </h1>
             </div>
         )
