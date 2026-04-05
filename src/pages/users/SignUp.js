@@ -1,89 +1,91 @@
-import React, { useState } from 'react'
-import {
-    useHistory,
-    useLocation
-} from "react-router-dom";
-import axios from 'axios'
-import { Auth } from '../../context/auth'
-import '../../styles/sign.css'
-import {
-    base, 
-    // currentAPI
-} from '../../components/const'
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
-const API = base
+import { requestSignUp } from '../../lib/api';
+import '../../styles/sign.css';
 
+export function SignUp() {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [passwordConfirm, setPasswordConfirm] = useState('');
+    const [userName, setUserName] = useState('');
+    const [error, setError] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-export const SignUp = () => {
-    const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
-    const [passwordConfirm, setPasswordConfirm] = useState('')
-    const [userName, setUserName] = useState('')
+    const navigate = useNavigate();
 
-    let history = useHistory();
-    let location = useLocation();
+    async function handleSubmit(event) {
+        event.preventDefault();
+        setError('');
 
-    const postSignUpAxios = async () => {
-        console.log('connected to server to create new user')
-        const result = await axios.post(`${API}/signUp`, {
-            userName: userName,
-            email: email, 
-            hash: password
-        })
-        return result
+        if (password !== passwordConfirm) {
+            setError('Passwords do not match.');
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        try {
+            await requestSignUp({
+                email,
+                userName,
+                password
+            });
+
+            navigate('/signIn', {
+                replace: true,
+                state: {
+                    from: { pathname: '/characters' }
+                }
+            });
+        } catch (requestError) {
+            setError(requestError.response?.data?.error || 'Unable to create that account.');
+        } finally {
+            setIsSubmitting(false);
+        }
     }
 
-    let { from } = location.state || { from: { pathname: "/signIn" } };
-    let signUp = async (event, contextFunc) => {
-        event.preventDefault()
-        if(password === passwordConfirm){
-            let makeUser = await postSignUpAxios()
-            console.log(makeUser)
-            if(makeUser.data){
-                alert("New user Made: " + email)
-                contextFunc(() => {
-                    history.replace(from);
-                })
-            } else {
-                alert("User exsists")
-            }
-;
-        } else {
-            alert("Passwords do not match")
-        }
-    };
-    
     return (
-        <Auth.Consumer>
-            {({ authenticate }) =>(
-            <div  className= "loginForm">
-                <h1> Sign Up </h1>
-                <form onSubmit={(event) => signUp(event, authenticate)}>
-                    <input id= "email" type="email" placeholder="Email" onChange= { event => {
-                        const email = event.target.value
-                        setEmail(email)
-                        // console.log(email)
-                    }}/> 
-                    <input id= "userName" type="text" placeholder="User Name" onChange= { event => {
-                        const userName = event.target.value
-                        setUserName(userName)
-                        // console.log(email)
-                    }}/>
-                    <input id= "password" type="password" placeholder="Password" onChange= { event => {
-                        const pswd = event.target.value
-                        setPassword(pswd)
-                        // console.log(pswd)
-                    }}/>
-                    <input id= "passwordConfirm" type="password" placeholder="Confirm Password" onChange= { event => {
-                        const pswdConfirm = event.target.value
-                        setPasswordConfirm(pswdConfirm)
-                        // console.log(pswdConfirm)
-                    }}/>
-                    <input type="submit" value= "Sign In" />
-                </form>
-            </div>
-                )
-            }
-        </Auth.Consumer>
-    )
+        <section className="page-card form-card">
+            <h1>Sign Up</h1>
+            <p className="form-copy">Create a player account before joining or managing characters.</p>
+            <form className="loginForm" onSubmit={handleSubmit}>
+                <input
+                    id="email"
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                />
+                <input
+                    id="userName"
+                    type="text"
+                    placeholder="User Name"
+                    value={userName}
+                    onChange={(event) => setUserName(event.target.value)}
+                />
+                <input
+                    id="password"
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                />
+                <input
+                    id="passwordConfirm"
+                    type="password"
+                    placeholder="Confirm Password"
+                    value={passwordConfirm}
+                    onChange={(event) => setPasswordConfirm(event.target.value)}
+                />
+                {error ? <p className="form-error">{error}</p> : null}
+                <button type="submit" className="primary-action" disabled={isSubmitting}>
+                    {isSubmitting ? 'Creating Account...' : 'Create Account'}
+                </button>
+            </form>
+            <p className="form-copy">
+                Already signed up? <Link to="/signIn">Go to sign in.</Link>
+            </p>
+        </section>
+    );
 }

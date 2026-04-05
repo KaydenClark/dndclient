@@ -1,71 +1,52 @@
-.nav{
-    
-    width: 100vw;
+.nav {
+    backdrop-filter: blur(12px);
+    background: rgba(8, 11, 18, 0.72);
+    border-bottom: 1px solid rgba(212, 176, 106, 0.16);
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
 
-.ulList{
-    background-color: #0A0A0A;
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    width: 100vw;
-    /* height: 10vh; */
+.nav-inner {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin: 0 auto;
+    max-width: 1100px;
+    padding: 1rem 1.25rem;
 }
 
-/* .liList:hover {
-    background-color: #F15025;
-} */
-
-.link:hover, .NavButton:hover{
-    color: #ED1C24;
-    text-decoration: none;
+.brand-link {
+    color: #f8f1e0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
 }
 
-.liList{
-    font-family: 'Times New Roman', Times, serif;
-    float: right;
+.nav-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
 }
 
-.link{
-    display: block;
-    color: #F7F7F7;
-    text-align: center;
-    padding: 14px 16px;
-    text-decoration: none;
-    font-size: 24px;
+.link {
+    border-radius: 999px;
+    color: #d7d8dd;
+    padding: 0.65rem 0.95rem;
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.NavButton{
-    display: block;
-    color: #F7F7F7;
-    text-align: center;
-    padding: 14px 16px;
+.link:hover,
+.link.active {
+    background: rgba(255, 255, 255, 0.08);
+    color: #f8f1e0;
 }
 
-.title{
-    font-family: 'Times New Roman', Times, serif;
-    float: left;
-    color: #F7F7F7;
-    text-align: center;
-    padding-left: 14px;
-    text-decoration: none;
-    font-size: 24px;
-}
-
-.search{
-    font-family: 'Times New Roman', Times, serif;
-    float: left;
-    color: #F7F7F7;
-    text-align: center;
-    padding-left: 14px;
-}
-
-.linkSearch {
-    display: block;
-    color: #F7F7F7;
-    text-align: center;
-    padding: 14px 16px;
-    text-decoration: none;
-    font-size: 24px;
+@media (max-width: 640px) {
+    .nav-inner {
+        align-items: flex-start;
+        flex-direction: column;
+    }
 }

@@ -1,15 +1,15 @@
+import React from 'react';
 
-import React from 'react'
-import { Links } from '../components/navigation/Links'
-import { Routes } from '../components/navigation/Routes'
+import { Links } from '../components/navigation/Links';
+import { AppRoutes } from '../components/navigation/Routes';
 
-
-export default () => {
-     
+export default function Main() {
     return (
-        <div>
-            <Links/>
-            <Routes/>
+        <div className="app-shell">
+            <Links />
+            <main className="page-shell">
+                <AppRoutes />
+            </main>
         </div>
-    )
+    );
 }

@@ -1,29 +1,35 @@
-import React from "react"
-import {
-    Link
-} from 'react-router-dom'
+import React from 'react';
+import { Link } from 'react-router-dom';
 
-export default class Home extends React.Component {
-    constructor(props){
-        super(props)
-        this.state = {
-            data: {}
-        }
-    }
+import { useAuth } from '../../context/auth';
 
-    render(){
-        return (
-            <div className= "Home" >
-                <h1>
-                    Welcome
-                </h1>
-                <h3>
-                    <Link to = "/signIn">Login</Link> <Link to = "/signUp">Sign Up</Link>
-                </h3>
-                <h1>
-                    Players Digital Binder
-                </h1>
+export default function Home() {
+    const { isAuthenticated } = useAuth();
+
+    return (
+        <section className="page-card hero-card">
+            <p className="eyebrow">Dungeon & Dragons</p>
+            <h1>Players Digital Binder</h1>
+            <p className="lead">
+                A shared space for players and the DM to keep character sheets,
+                session-ready details, and campaign data in one place.
+            </p>
+            <div className="hero-actions">
+                {isAuthenticated ? (
+                    <Link to="/characters" className="primary-action">
+                        Open Character List
+                    </Link>
+                ) : (
+                    <>
+                        <Link to="/signIn" className="primary-action">
+                            Sign In
+                        </Link>
+                        <Link to="/signUp" className="secondary-action">
+                            Create Account
+                        </Link>
+                    </>
+                )}
             </div>
-        ) //return 
-    } //render
-} //Home
+        </section>
+    );
+}

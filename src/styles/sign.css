@@ -1,43 +1,27 @@
-.loginForm{
-    width: 300px;
-    padding: 40px;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
+.loginForm {
+    display: grid;
+    gap: 0.9rem;
+    margin-top: 1.25rem;
 }
 
-.loginForm input[type= "email"], .loginForm input[type= "password"], .loginForm input[type= "text"]{
-    border: 0;
-    background: none;
-    display: block;
-    margin: 20px auto;
-    text-align: center;
-    padding: 14px, 10px;
-    width: 200px;
+.loginForm input[type="email"],
+.loginForm input[type="password"],
+.loginForm input[type="text"],
+.loginForm input[type="number"] {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    color: #f8f1e0;
+    min-height: 48px;
     outline: none;
-    
+    padding: 0 1rem;
 }
 
-
-.loginForm input[type= "submit"]{
-    border: 0;
-    background: none;
-    display: block;
-    margin: 20px auto;
-    text-align: center;
-    color: #1E2019;
-    padding: 14px, 40px;
-    width: 200px;
-    outline: none;
+.loginForm input::placeholder {
+    color: #aab0be;
 }
 
-.loginForm input[type= "submit"]:hover{
-    cursor: pointer;
-}
-
-.loginForm h1{
-    text-transform: uppercase;
-    font-weight: 500;
+.form-error {
+    color: #ffb5b5;
+    margin: 0;
 }

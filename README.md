@@ -1,10 +1,30 @@
-This is an app for Dungeon and Dragon players to help digigtalize the process of playing.
+# dndclient
 
-The DM may set up an account and invite players to join, the DM and the player have joint custody of the character sheet, any changes made by either one will change the character sheet for both. the DM can make notes on the sheets, ask for rolls, or refrence the books, and all without having a thousand resorces infront of them
+Vite + React frontend for the D&D WebApp.
 
-This is a Players Digital Binder (PDB)
+## What Changed
 
-Suggestions are welcome, just contact me at kaydenclark725@gmail.com
+- Migrated the old Create React App setup to Vite.
+- Reworked auth so tokens persist through refreshes.
+- Added protected routes for character pages.
+- Rebuilt the character list and detail flows around the revived backend.
+- Added derived sheet views for:
+  - race, class, and subclass
+  - ability scores and saving throws
+  - HP, AC, initiative, and passive perception
+  - attacks, proficiencies, spellcasting, spell slots, and features
 
-Intergrated with the DND5eapi (http://dnd5eapi.co/api/)
+## Local Setup
+
+1. Create `.env` from `.env.example`
+2. Set `VITE_API_BASE_URL` to the backend URL
+3. Run `npm install`
+4. Run `npm run dev`
+
+Default frontend port: `5173`
+
+## Validation
+
+- `npm test`
+- `npm run build`
 
