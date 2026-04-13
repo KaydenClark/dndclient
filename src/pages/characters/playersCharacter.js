@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { useAuth } from '../../context/auth';
-import { fetchCharacterById } from '../../lib/api';
+import { fetchCharacterById, fetchCompendiumBootstrap, updateCharacter } from '../../lib/api';
 
 const ABILITY_ORDER = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
 const CURRENCY_ORDER = ['cp', 'sp', 'ep', 'gp', 'pp'];
@@ -38,6 +38,62 @@ function formatRange(range) {
     return null;
 }
 
+function clampLevel(value) {
+    return Math.min(Math.max(Number(value) || 1, 1), 20);
+}
+
+function unique(values) {
+    return [...new Set((values || []).filter(Boolean))];
+}
+
+function sortSpells(spells) {
+    return [...spells].sort((left, right) => {
+        if (left.level !== right.level) {
+            return left.level - right.level;
+        }
+
+        return left.name.localeCompare(right.name);
+    });
+}
+
+function syncPlanner(character) {
+    return {
+        level: character?.level || 1,
+        cantripIds: character?.cantripIds || [],
+        knownSpellIds: character?.knownSpellIds || [],
+        preparedSpellIds: character?.preparedSpellIds || []
+    };
+}
+
+function SpellSelectionGroup({ title, description, options, selectedIds, onToggle }) {
+    return (
+        <div className="levelup-spell-group">
+            <div className="levelup-group-header">
+                <strong>{title}</strong>
+                <span>{description}</span>
+            </div>
+            {options.length === 0 ? <p className="status-copy">No spells available for this list.</p> : null}
+            {options.length > 0 ? (
+                <div className="spell-selector-list">
+                    {options.map((spell) => (
+                        <label key={spell.id} className="spell-selector-card">
+                            <input
+                                type="checkbox"
+                                checked={selectedIds.includes(spell.id)}
+                                onChange={() => onToggle(spell.id)}
+                            />
+                            <span className="spell-selector-copy">
+                                <strong>{spell.name}</strong>
+                                <small>{spell.level === 0 ? 'Cantrip' : `Level ${spell.level}`}</small>
+                            </span>
+                        </label>
+                    ))}
+                </div>
+            ) : null}
+        </div>
+    );
+}
+
 function SpellGroup({ title, spells, emptyCopy }) {
     return (
         <div className="detail-panel">
@@ -51,7 +107,7 @@ function SpellGroup({ title, spells, emptyCopy }) {
                                 <strong>{spell.name}</strong>
                                 <span>Level {spell.level}</span>
                             </div>
-                            <p>{spell.school} • {spell.range} • {spell.duration}</p>
+                            <p>{spell.school} | {spell.range} | {spell.duration}</p>
                             {spell.damageSummary ? <p>Effect: {spell.damageSummary}</p> : null}
                             {spell.attackType ? <p>Attack: {spell.attackType}</p> : null}
                             {spell.saveType ? <p>Save: {spell.saveType.toUpperCase()} vs DC {spell.spellSaveDC}</p> : null}
@@ -65,8 +121,12 @@ function SpellGroup({ title, spells, emptyCopy }) {
 
 export default function PlayersCharacter() {
     const [character, setCharacter] = useState(null);
+    const [compendium, setCompendium] = useState({ spells: [] });
+    const [planner, setPlanner] = useState(syncPlanner(null));
     const [error, setError] = useState('');
+    const [saveMessage, setSaveMessage] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
 
     const { characterId } = useParams();
     const { token } = useAuth();
@@ -77,12 +137,20 @@ export default function PlayersCharacter() {
         async function loadCharacter() {
             setIsLoading(true);
             setError('');
+            setSaveMessage('');
 
             try {
-                const result = await fetchCharacterById(token, characterId);
+                const [nextCharacter, bootstrap] = await Promise.all([
+                    fetchCharacterById(token, characterId),
+                    fetchCompendiumBootstrap()
+                ]);
 
                 if (!ignore) {
-                    setCharacter(result);
+                    setCharacter(nextCharacter);
+                    setPlanner(syncPlanner(nextCharacter));
+                    setCompendium({
+                        spells: bootstrap.spells || []
+                    });
                 }
             } catch (requestError) {
                 if (!ignore) {
@@ -102,11 +170,65 @@ export default function PlayersCharacter() {
         };
     }, [characterId, token]);
 
+    function toggleSelection(key, spellId) {
+        setPlanner((currentPlanner) => {
+            const values = currentPlanner[key];
+            const isSelected = values.includes(spellId);
+            const nextValues = isSelected
+                ? values.filter((value) => value !== spellId)
+                : [...values, spellId];
+
+            if (key === 'knownSpellIds' && isSelected) {
+                return {
+                    ...currentPlanner,
+                    knownSpellIds: nextValues,
+                    preparedSpellIds: currentPlanner.preparedSpellIds.filter((value) => value !== spellId)
+                };
+            }
+
+            if (key === 'preparedSpellIds' && !isSelected && !currentPlanner.knownSpellIds.includes(spellId)) {
+                return {
+                    ...currentPlanner,
+                    knownSpellIds: [...currentPlanner.knownSpellIds, spellId],
+                    preparedSpellIds: [...currentPlanner.preparedSpellIds, spellId]
+                };
+            }
+
+            return {
+                ...currentPlanner,
+                [key]: nextValues
+            };
+        });
+    }
+
+    async function handleSaveLevelUp() {
+        setIsSaving(true);
+        setError('');
+        setSaveMessage('');
+
+        try {
+            const nextCharacter = await updateCharacter(token, characterId, {
+                level: clampLevel(planner.level),
+                cantripIds: planner.cantripIds,
+                knownSpellIds: planner.knownSpellIds,
+                preparedSpellIds: planner.preparedSpellIds
+            });
+
+            setCharacter(nextCharacter);
+            setPlanner(syncPlanner(nextCharacter));
+            setSaveMessage('Character updated. Features, spell slots, and derived stats refreshed.');
+        } catch (requestError) {
+            setError(requestError.response?.data?.error || 'Unable to update character.');
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
     if (isLoading) {
         return <section className="page-card"><p className="status-copy">Loading character...</p></section>;
     }
 
-    if (error) {
+    if (error && !character) {
         return <section className="page-card"><p className="form-error">{error}</p></section>;
     }
 
@@ -116,12 +238,23 @@ export default function PlayersCharacter() {
 
     const subtitle = [character.raceName, character.className, character.subclassName]
         .filter(Boolean)
-        .join(' • ');
+        .join(' | ');
     const attacks = character.attacks || [];
     const cantrips = character.resolvedSpells?.cantrips || [];
     const knownSpells = character.resolvedSpells?.known || [];
     const preparedSpells = character.resolvedSpells?.prepared || [];
     const features = character.features || [];
+    const availableSpellIds = unique([
+        ...(character.availableSpellIds || []),
+        ...planner.cantripIds,
+        ...planner.knownSpellIds,
+        ...planner.preparedSpellIds
+    ]);
+    const availableSpells = sortSpells(
+        (compendium.spells || []).filter((spell) => availableSpellIds.includes(spell.id))
+    );
+    const cantripOptions = availableSpells.filter((spell) => spell.level === 0);
+    const leveledSpellOptions = availableSpells.filter((spell) => spell.level > 0);
 
     return (
         <section className="page-card character-detail-card">
@@ -130,6 +263,9 @@ export default function PlayersCharacter() {
             </Link>
             <h1>{character.characterName}</h1>
             <p className="character-subtitle">{subtitle || 'Unassigned adventurer'}</p>
+            {saveMessage ? <p className="form-success">{saveMessage}</p> : null}
+            {error ? <p className="form-error">{error}</p> : null}
+
             <div className="character-detail-grid">
                 <div>
                     <span className="detail-label">User</span>
@@ -168,6 +304,110 @@ export default function PlayersCharacter() {
                 {character.spellAttackBonus !== null && character.spellAttackBonus !== undefined ? (
                     <div className="summary-stat"><span className="detail-label">Spell Attack</span><strong>{formatModifier(character.spellAttackBonus)}</strong></div>
                 ) : null}
+            </div>
+
+            <div className="detail-panel levelup-panel">
+                <div className="section-heading">
+                    <div>
+                        <h3>Level-Up Studio</h3>
+                        <p className="status-copy">Adjust level, update spell picks, then save to re-derive the sheet.</p>
+                    </div>
+                    <div className="levelup-actions">
+                        <button
+                            type="button"
+                            className="secondary-action"
+                            onClick={() => setPlanner(syncPlanner(character))}
+                            disabled={isSaving}
+                        >
+                            Reset
+                        </button>
+                        <button
+                            type="button"
+                            className="primary-action"
+                            onClick={handleSaveLevelUp}
+                            disabled={isSaving}
+                        >
+                            {isSaving ? 'Saving...' : 'Save Level-Up'}
+                        </button>
+                    </div>
+                </div>
+
+                <div className="levelup-toolbar">
+                    <div className="levelup-level-card">
+                        <span className="detail-label">Level</span>
+                        <div className="levelup-level-controls">
+                            <button
+                                type="button"
+                                className="secondary-action"
+                                aria-label="Decrease level"
+                                onClick={() => setPlanner((currentPlanner) => ({
+                                    ...currentPlanner,
+                                    level: clampLevel(currentPlanner.level - 1)
+                                }))}
+                                disabled={isSaving || planner.level <= 1}
+                            >
+                                -
+                            </button>
+                            <input
+                                type="number"
+                                min="1"
+                                max="20"
+                                value={planner.level}
+                                onChange={(event) => setPlanner((currentPlanner) => ({
+                                    ...currentPlanner,
+                                    level: clampLevel(event.target.value)
+                                }))}
+                                aria-label="Character level"
+                            />
+                            <button
+                                type="button"
+                                className="secondary-action"
+                                aria-label="Increase level"
+                                onClick={() => setPlanner((currentPlanner) => ({
+                                    ...currentPlanner,
+                                    level: clampLevel(currentPlanner.level + 1)
+                                }))}
+                                disabled={isSaving || planner.level >= 20}
+                            >
+                                +
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="levelup-summary-card">
+                        <span className="detail-label">Current Sheet</span>
+                        <strong>HP {character.currentHp}/{character.maxHp}</strong>
+                        <small>Proficiency {formatModifier(character.proficiencyBonus)} | Spell DC {character.spellSaveDC ?? '--'}</small>
+                    </div>
+                </div>
+
+                {character.spellcasting?.ability ? (
+                    <div className="levelup-spell-grid">
+                        <SpellSelectionGroup
+                            title="Cantrips"
+                            description="Choose the cantrips you want on the sheet."
+                            options={cantripOptions}
+                            selectedIds={planner.cantripIds}
+                            onToggle={(spellId) => toggleSelection('cantripIds', spellId)}
+                        />
+                        <SpellSelectionGroup
+                            title="Known Spells"
+                            description="Known spells remain available for preparation."
+                            options={leveledSpellOptions}
+                            selectedIds={planner.knownSpellIds}
+                            onToggle={(spellId) => toggleSelection('knownSpellIds', spellId)}
+                        />
+                        <SpellSelectionGroup
+                            title="Prepared Spells"
+                            description="Preparing a spell also adds it to known spells if needed."
+                            options={leveledSpellOptions}
+                            selectedIds={planner.preparedSpellIds}
+                            onToggle={(spellId) => toggleSelection('preparedSpellIds', spellId)}
+                        />
+                    </div>
+                ) : (
+                    <p className="status-copy">This class does not use spell selection. Save to refresh level-based features and combat stats.</p>
+                )}
             </div>
 
             <div className="detail-panel">

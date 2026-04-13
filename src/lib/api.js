@@ -39,3 +39,8 @@ export async function fetchCharacterById(token, characterId) {
     const response = await axios.get(`${base}/player/${characterId}`, authConfig(token));
     return response.data.character;
 }
+
+export async function updateCharacter(token, characterId, payload) {
+    const response = await axios.put(`${base}/player/${characterId}`, payload, authConfig(token));
+    return response.data.character;
+}
