@@ -177,7 +177,8 @@
 }
 
 .character-create-form input,
-.character-create-form select {
+.character-create-form select,
+.character-create-form textarea {
     background: rgba(8, 15, 28, 0.85);
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 12px;
@@ -186,8 +187,35 @@
     padding: 0 0.9rem;
 }
 
+.character-create-form textarea {
+    grid-column: 1 / -1;
+    min-height: 96px;
+    padding: 0.85rem 0.9rem;
+    resize: vertical;
+}
+
 .character-create-form .ability-score-grid {
     grid-column: 1 / -1;
+}
+
+.character-sheet-heading {
+    margin-bottom: 1.25rem;
+}
+
+.character-edit-panel {
+    margin-top: 1.5rem;
+}
+
+.character-edit-form .ability-score-grid,
+.currency-grid,
+.weapon-picker {
+    grid-column: 1 / -1;
+}
+
+.currency-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
 }
 
 .summary-stat-grid,
@@ -267,6 +295,99 @@
     margin-top: 1rem;
 }
 
+.form-success {
+    color: #b7f0c1;
+    margin-top: 1rem;
+}
+
+.levelup-panel {
+    margin-top: 1.5rem;
+}
+
+.levelup-toolbar,
+.levelup-spell-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    margin-top: 1rem;
+}
+
+.levelup-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.levelup-level-card,
+.levelup-summary-card,
+.levelup-spell-group {
+    background: rgba(8, 15, 28, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 1rem;
+}
+
+.levelup-summary-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.levelup-summary-card small,
+.levelup-group-header span,
+.spell-selector-copy small {
+    color: #c7c9d3;
+}
+
+.levelup-level-controls {
+    align-items: center;
+    display: flex;
+    gap: 0.75rem;
+}
+
+.levelup-level-controls input {
+    background: rgba(8, 15, 28, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 12px;
+    color: #f8f1e0;
+    min-height: 46px;
+    padding: 0 0.9rem;
+    width: 88px;
+}
+
+.levelup-group-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 0.85rem;
+}
+
+.spell-selector-list {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.spell-selector-card {
+    align-items: flex-start;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    cursor: pointer;
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.8rem 0.9rem;
+}
+
+.spell-selector-card input {
+    margin-top: 0.2rem;
+}
+
+.spell-selector-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
 @media (max-width: 640px) {
     .character-card {
         align-items: flex-start;
@@ -275,7 +396,10 @@
     }
 
     .detail-list li,
-    .spell-card-header {
+    .spell-card-header,
+    .section-heading,
+    .levelup-actions,
+    .levelup-level-controls {
         align-items: flex-start;
         flex-direction: column;
         gap: 0.35rem;
