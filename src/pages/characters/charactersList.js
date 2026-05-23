@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import CharacterSheet from '../../components/characters/characterSheet';
 import { useAuth } from '../../context/auth';
@@ -51,6 +52,7 @@ export default function CharactersList() {
     const [isSaving, setIsSaving] = useState(false);
 
     const { token } = useAuth();
+    const navigate = useNavigate();
 
     useEffect(() => {
         let ignore = false;
@@ -126,6 +128,7 @@ export default function CharactersList() {
                 ...currentCharacters
             ]);
             setForm((currentForm) => syncFormWithCompendium(initialForm, compendium));
+            navigate(`/characters/${nextCharacter._id}?mode=levelUp`);
         } catch (requestError) {
             setError(requestError.response?.data?.error || 'Unable to create character.');
         } finally {

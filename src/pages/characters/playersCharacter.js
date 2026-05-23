@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '../../context/auth';
 import { fetchCharacterById, fetchCompendiumBootstrap, updateCharacter } from '../../lib/api';
@@ -65,6 +65,52 @@ function syncPlanner(character) {
     };
 }
 
+function syncEditForm(character) {
+    return {
+        characterName: character?.characterName || '',
+        raceId: character?.raceId || '',
+        classId: character?.classId || '',
+        subclassId: character?.subclassId || '',
+        background: character?.background || '',
+        alignment: character?.alignment || '',
+        level: character?.level || 1,
+        baseAbilityScores: {
+            str: character?.baseAbilityScores?.str ?? character?.abilityScores?.str ?? 8,
+            dex: character?.baseAbilityScores?.dex ?? character?.abilityScores?.dex ?? 8,
+            con: character?.baseAbilityScores?.con ?? character?.abilityScores?.con ?? 8,
+            int: character?.baseAbilityScores?.int ?? character?.abilityScores?.int ?? 8,
+            wis: character?.baseAbilityScores?.wis ?? character?.abilityScores?.wis ?? 8,
+            cha: character?.baseAbilityScores?.cha ?? character?.abilityScores?.cha ?? 8
+        },
+        currentHp: character?.currentHp ?? '',
+        tempHp: character?.tempHp ?? 0,
+        armorId: character?.armorId || '',
+        shieldId: character?.shieldId || '',
+        equippedWeaponIds: character?.equippedWeaponIds || [],
+        currency: {
+            cp: character?.currency?.cp ?? 0,
+            sp: character?.currency?.sp ?? 0,
+            ep: character?.currency?.ep ?? 0,
+            gp: character?.currency?.gp ?? 0,
+            pp: character?.currency?.pp ?? 0
+        },
+        traits: character?.traits || '',
+        ideals: character?.ideals || '',
+        bonds: character?.bonds || '',
+        flaws: character?.flaws || '',
+        backstory: character?.backstory || ''
+    };
+}
+
+function toNumberOrUndefined(value) {
+    if (value === '' || value === null || value === undefined) {
+        return undefined;
+    }
+
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 function SpellSelectionGroup({ title, description, options, selectedIds, onToggle }) {
     return (
         <div className="levelup-spell-group">
@@ -121,14 +167,25 @@ function SpellGroup({ title, spells, emptyCopy }) {
 
 export default function PlayersCharacter() {
     const [character, setCharacter] = useState(null);
-    const [compendium, setCompendium] = useState({ spells: [] });
+    const [compendium, setCompendium] = useState({
+        races: [],
+        classes: [],
+        subclasses: [],
+        weapons: [],
+        armor: [],
+        spells: []
+    });
     const [planner, setPlanner] = useState(syncPlanner(null));
+    const [editForm, setEditForm] = useState(syncEditForm(null));
+    const [mode, setMode] = useState('view');
     const [error, setError] = useState('');
     const [saveMessage, setSaveMessage] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
     const { characterId } = useParams();
+    const [searchParams] = useSearchParams();
+    const initialMode = searchParams.get('mode');
     const { token } = useAuth();
 
     useEffect(() => {
@@ -148,7 +205,14 @@ export default function PlayersCharacter() {
                 if (!ignore) {
                     setCharacter(nextCharacter);
                     setPlanner(syncPlanner(nextCharacter));
+                    setEditForm(syncEditForm(nextCharacter));
+                    setMode(initialMode === 'levelUp' ? 'levelUp' : 'view');
                     setCompendium({
+                        races: bootstrap.races || [],
+                        classes: bootstrap.classes || [],
+                        subclasses: bootstrap.subclasses || [],
+                        weapons: bootstrap.weapons || [],
+                        armor: bootstrap.armor || [],
                         spells: bootstrap.spells || []
                     });
                 }
@@ -168,7 +232,7 @@ export default function PlayersCharacter() {
         return () => {
             ignore = true;
         };
-    }, [characterId, token]);
+    }, [characterId, initialMode, token]);
 
     function toggleSelection(key, spellId) {
         setPlanner((currentPlanner) => {
@@ -201,6 +265,112 @@ export default function PlayersCharacter() {
         });
     }
 
+    function openEditMode() {
+        setEditForm(syncEditForm(character));
+        setMode('edit');
+        setError('');
+        setSaveMessage('');
+    }
+
+    function openLevelUpMode() {
+        setPlanner(syncPlanner(character));
+        setMode('levelUp');
+        setError('');
+        setSaveMessage('');
+    }
+
+    function closeActiveMode() {
+        setEditForm(syncEditForm(character));
+        setPlanner(syncPlanner(character));
+        setMode('view');
+        setError('');
+    }
+
+    function updateEditField(key, value) {
+        setEditForm((currentForm) => ({
+            ...currentForm,
+            [key]: value
+        }));
+    }
+
+    function updateAbilityScore(ability, value) {
+        setEditForm((currentForm) => ({
+            ...currentForm,
+            baseAbilityScores: {
+                ...currentForm.baseAbilityScores,
+                [ability]: value
+            }
+        }));
+    }
+
+    function updateCurrency(type, value) {
+        setEditForm((currentForm) => ({
+            ...currentForm,
+            currency: {
+                ...currentForm.currency,
+                [type]: value
+            }
+        }));
+    }
+
+    function toggleEquippedWeapon(weaponId) {
+        setEditForm((currentForm) => {
+            const isEquipped = currentForm.equippedWeaponIds.includes(weaponId);
+
+            return {
+                ...currentForm,
+                equippedWeaponIds: isEquipped
+                    ? currentForm.equippedWeaponIds.filter((value) => value !== weaponId)
+                    : [...currentForm.equippedWeaponIds, weaponId]
+            };
+        });
+    }
+
+    async function handleSaveEdit(event) {
+        event.preventDefault();
+        setIsSaving(true);
+        setError('');
+        setSaveMessage('');
+
+        try {
+            const nextCharacter = await updateCharacter(token, characterId, {
+                characterName: editForm.characterName,
+                raceId: editForm.raceId,
+                classId: editForm.classId,
+                subclassId: editForm.subclassId || undefined,
+                background: editForm.background,
+                alignment: editForm.alignment,
+                level: clampLevel(editForm.level),
+                baseAbilityScores: Object.fromEntries(
+                    Object.entries(editForm.baseAbilityScores).map(([ability, value]) => [ability, Number(value) || 0])
+                ),
+                currentHp: toNumberOrUndefined(editForm.currentHp),
+                tempHp: toNumberOrUndefined(editForm.tempHp) || 0,
+                armorId: editForm.armorId || null,
+                shieldId: editForm.shieldId || null,
+                equippedWeaponIds: editForm.equippedWeaponIds,
+                currency: Object.fromEntries(
+                    Object.entries(editForm.currency).map(([type, value]) => [type, Number(value) || 0])
+                ),
+                traits: editForm.traits,
+                ideals: editForm.ideals,
+                bonds: editForm.bonds,
+                flaws: editForm.flaws,
+                backstory: editForm.backstory
+            });
+
+            setCharacter(nextCharacter);
+            setPlanner(syncPlanner(nextCharacter));
+            setEditForm(syncEditForm(nextCharacter));
+            setMode('view');
+            setSaveMessage('Character sheet updated.');
+        } catch (requestError) {
+            setError(requestError.response?.data?.error || 'Unable to update character.');
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
     async function handleSaveLevelUp() {
         setIsSaving(true);
         setError('');
@@ -216,7 +386,9 @@ export default function PlayersCharacter() {
 
             setCharacter(nextCharacter);
             setPlanner(syncPlanner(nextCharacter));
-            setSaveMessage('Character updated. Features, spell slots, and derived stats refreshed.');
+            setEditForm(syncEditForm(nextCharacter));
+            setMode('view');
+            setSaveMessage('Character sheet updated. Features, spell slots, and derived stats refreshed.');
         } catch (requestError) {
             setError(requestError.response?.data?.error || 'Unable to update character.');
         } finally {
@@ -255,12 +427,35 @@ export default function PlayersCharacter() {
     );
     const cantripOptions = availableSpells.filter((spell) => spell.level === 0);
     const leveledSpellOptions = availableSpells.filter((spell) => spell.level > 0);
+    const subclassOptions = compendium.subclasses.filter((subclass) => subclass.classId === editForm.classId);
+    const armorOptions = compendium.armor.filter((armor) => armor.category !== 'shield');
+    const shieldOptions = compendium.armor.filter((armor) => armor.category === 'shield');
 
     return (
         <section className="page-card character-detail-card">
-            <Link to="/characters" className="secondary-action">
-                Back to Characters
-            </Link>
+            <div className="section-heading character-sheet-heading">
+                <Link to="/characters" className="secondary-action">
+                    Back to Characters
+                </Link>
+                <div className="levelup-actions">
+                    <button
+                        type="button"
+                        className="secondary-action"
+                        onClick={openEditMode}
+                        disabled={isSaving || mode === 'edit'}
+                    >
+                        Edit Character
+                    </button>
+                    <button
+                        type="button"
+                        className="primary-action"
+                        onClick={openLevelUpMode}
+                        disabled={isSaving || mode === 'levelUp'}
+                    >
+                        Level Up
+                    </button>
+                </div>
+            </div>
             <h1>{character.characterName}</h1>
             <p className="character-subtitle">{subtitle || 'Unassigned adventurer'}</p>
             {saveMessage ? <p className="form-success">{saveMessage}</p> : null}
@@ -306,6 +501,176 @@ export default function PlayersCharacter() {
                 ) : null}
             </div>
 
+            {mode === 'edit' ? (
+                <form className="detail-panel character-edit-panel" onSubmit={handleSaveEdit}>
+                    <div className="section-heading">
+                        <div>
+                            <h3>Edit Character</h3>
+                            <p className="status-copy">Update sheet details, then save and apply to refresh derived stats.</p>
+                        </div>
+                        <div className="levelup-actions">
+                            <button type="button" className="secondary-action" onClick={closeActiveMode} disabled={isSaving}>
+                                Cancel
+                            </button>
+                            <button type="submit" className="primary-action" disabled={isSaving}>
+                                {isSaving ? 'Saving...' : 'Save and Apply'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="character-create-form character-edit-form">
+                        <input
+                            type="text"
+                            placeholder="Character Name"
+                            value={editForm.characterName}
+                            onChange={(event) => updateEditField('characterName', event.target.value)}
+                        />
+                        <select
+                            value={editForm.raceId}
+                            onChange={(event) => updateEditField('raceId', event.target.value)}
+                        >
+                            {compendium.races.map((race) => (
+                                <option key={race.id} value={race.id}>{race.name}</option>
+                            ))}
+                        </select>
+                        <select
+                            value={editForm.classId}
+                            onChange={(event) => {
+                                const nextClassId = event.target.value;
+                                const nextSubclasses = compendium.subclasses.filter((subclass) => subclass.classId === nextClassId);
+
+                                setEditForm((currentForm) => ({
+                                    ...currentForm,
+                                    classId: nextClassId,
+                                    subclassId: nextSubclasses[0]?.id || ''
+                                }));
+                            }}
+                        >
+                            {compendium.classes.map((classDoc) => (
+                                <option key={classDoc.id} value={classDoc.id}>{classDoc.name}</option>
+                            ))}
+                        </select>
+                        <select
+                            value={editForm.subclassId}
+                            onChange={(event) => updateEditField('subclassId', event.target.value)}
+                        >
+                            {subclassOptions.length === 0 ? <option value="">No subclass</option> : null}
+                            {subclassOptions.map((subclass) => (
+                                <option key={subclass.id} value={subclass.id}>{subclass.name}</option>
+                            ))}
+                        </select>
+                        <input
+                            type="number"
+                            min="1"
+                            max="20"
+                            placeholder="Level"
+                            value={editForm.level}
+                            onChange={(event) => updateEditField('level', event.target.value)}
+                        />
+                        <input
+                            type="text"
+                            placeholder="Background"
+                            value={editForm.background}
+                            onChange={(event) => updateEditField('background', event.target.value)}
+                        />
+                        <input
+                            type="text"
+                            placeholder="Alignment"
+                            value={editForm.alignment}
+                            onChange={(event) => updateEditField('alignment', event.target.value)}
+                        />
+                        <input
+                            type="number"
+                            placeholder="Current HP"
+                            value={editForm.currentHp}
+                            onChange={(event) => updateEditField('currentHp', event.target.value)}
+                        />
+                        <input
+                            type="number"
+                            placeholder="Temp HP"
+                            value={editForm.tempHp}
+                            onChange={(event) => updateEditField('tempHp', event.target.value)}
+                        />
+                        <select
+                            value={editForm.armorId}
+                            onChange={(event) => updateEditField('armorId', event.target.value)}
+                        >
+                            <option value="">No armor</option>
+                            {armorOptions.map((armor) => (
+                                <option key={armor.id} value={armor.id}>{armor.name}</option>
+                            ))}
+                        </select>
+                        <select
+                            value={editForm.shieldId}
+                            onChange={(event) => updateEditField('shieldId', event.target.value)}
+                        >
+                            <option value="">No shield</option>
+                            {shieldOptions.map((armor) => (
+                                <option key={armor.id} value={armor.id}>{armor.name}</option>
+                            ))}
+                        </select>
+
+                        <div className="ability-score-grid">
+                            {ABILITY_ORDER.map((ability) => (
+                                <label key={ability} className="ability-score-field">
+                                    <span>{ability.toUpperCase()}</span>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="30"
+                                        value={editForm.baseAbilityScores[ability]}
+                                        onChange={(event) => updateAbilityScore(ability, event.target.value)}
+                                    />
+                                </label>
+                            ))}
+                        </div>
+
+                        <div className="currency-grid">
+                            {CURRENCY_ORDER.map((type) => (
+                                <label key={type} className="ability-score-field">
+                                    <span>{type.toUpperCase()}</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={editForm.currency[type]}
+                                        onChange={(event) => updateCurrency(type, event.target.value)}
+                                    />
+                                </label>
+                            ))}
+                        </div>
+
+                        <div className="weapon-picker">
+                            <span className="detail-label">Equipped Weapons</span>
+                            <div className="spell-selector-list">
+                                {compendium.weapons.map((weapon) => (
+                                    <label key={weapon.id} className="spell-selector-card">
+                                        <input
+                                            type="checkbox"
+                                            checked={editForm.equippedWeaponIds.includes(weapon.id)}
+                                            onChange={() => toggleEquippedWeapon(weapon.id)}
+                                        />
+                                        <span className="spell-selector-copy">
+                                            <strong>{weapon.name}</strong>
+                                            <small>{formatSlug(weapon.category || weapon.weaponType)}</small>
+                                        </span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        {['traits', 'ideals', 'bonds', 'flaws', 'backstory'].map((field) => (
+                            <textarea
+                                key={field}
+                                placeholder={formatSlug(field)}
+                                value={editForm[field]}
+                                onChange={(event) => updateEditField(field, event.target.value)}
+                            />
+                        ))}
+                    </div>
+                </form>
+            ) : null}
+
+            {mode === 'levelUp' ? (
             <div className="detail-panel levelup-panel">
                 <div className="section-heading">
                     <div>
@@ -323,11 +688,19 @@ export default function PlayersCharacter() {
                         </button>
                         <button
                             type="button"
+                            className="secondary-action"
+                            onClick={closeActiveMode}
+                            disabled={isSaving}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
                             className="primary-action"
                             onClick={handleSaveLevelUp}
                             disabled={isSaving}
                         >
-                            {isSaving ? 'Saving...' : 'Save Level-Up'}
+                            {isSaving ? 'Saving...' : 'Save and Apply'}
                         </button>
                     </div>
                 </div>
@@ -409,6 +782,7 @@ export default function PlayersCharacter() {
                     <p className="status-copy">This class does not use spell selection. Save to refresh level-based features and combat stats.</p>
                 )}
             </div>
+            ) : null}
 
             <div className="detail-panel">
                 <h3>Ability Scores</h3>
