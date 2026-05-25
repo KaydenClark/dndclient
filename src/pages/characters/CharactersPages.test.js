@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
 import CharactersList from './charactersList';
+import CharacterNew from './CharacterNew';
 import PlayersCharacter from './playersCharacter';
 import {
     createCharacter,
@@ -32,7 +33,6 @@ beforeEach(() => {
 });
 
 test('renders compendium-backed character creation controls', async () => {
-    fetchCharacters.mockResolvedValue([]);
     fetchCompendiumBootstrap.mockResolvedValue({
         races: [{ id: 'high-elf', name: 'High Elf' }],
         classes: [{ id: 'wizard', name: 'Wizard' }],
@@ -41,7 +41,7 @@ test('renders compendium-backed character creation controls', async () => {
 
     render(
         <MemoryRouter>
-            <CharactersList />
+            <CharacterNew />
         </MemoryRouter>
     );
 
@@ -55,7 +55,6 @@ test('renders compendium-backed character creation controls', async () => {
 });
 
 test('opens the level-up flow after creating a character', async () => {
-    fetchCharacters.mockResolvedValue([]);
     fetchCompendiumBootstrap.mockResolvedValue({
         races: [{ id: 'high-elf', name: 'High Elf' }],
         classes: [{ id: 'wizard', name: 'Wizard' }],
@@ -70,9 +69,9 @@ test('opens the level-up flow after creating a character', async () => {
     });
 
     render(
-        <MemoryRouter initialEntries={['/characters']}>
+        <MemoryRouter initialEntries={['/characters/new']}>
             <Routes>
-                <Route path="/characters" element={<CharactersList />} />
+                <Route path="/characters/new" element={<CharacterNew />} />
                 <Route path="/characters/:characterId" element={<p>Level-up handoff</p>} />
             </Routes>
         </MemoryRouter>
@@ -90,6 +89,60 @@ test('opens the level-up flow after creating a character', async () => {
     await waitFor(() => {
         expect(screen.getByText(/level-up handoff/i)).toBeInTheDocument();
     });
+});
+
+test('lists characters and links to the creation page', async () => {
+    fetchCharacters.mockResolvedValue([
+        {
+            _id: 'character-1',
+            characterName: 'Akta Dragonfucked',
+            raceName: 'Tiefling',
+            className: 'Sorcerer',
+            level: 3
+        }
+    ]);
+
+    render(
+        <MemoryRouter>
+            <CharactersList />
+        </MemoryRouter>
+    );
+
+    await waitFor(() => {
+        expect(screen.getByRole('heading', { name: /your characters/i })).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/akta dragonfucked/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /create character/i })).toHaveAttribute('href', '/characters/new');
+});
+
+test('drives skill proficiency choices from the selected class rules', async () => {
+    fetchCompendiumBootstrap.mockResolvedValue({
+        races: [{ id: 'human', name: 'Human' }],
+        classes: [{
+            id: 'rogue',
+            name: 'Rogue',
+            skillChoiceRules: { choose: 2, options: ['acrobatics', 'stealth', 'perception'] }
+        }],
+        subclasses: []
+    });
+
+    render(
+        <MemoryRouter>
+            <CharacterNew />
+        </MemoryRouter>
+    );
+
+    await waitFor(() => {
+        expect(screen.getByRole('button', { name: /create character/i })).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/skill proficiencies/i)).toBeInTheDocument();
+
+    const stealth = screen.getByLabelText(/stealth/i);
+    expect(stealth).not.toBeChecked();
+    fireEvent.click(stealth);
+    expect(stealth).toBeChecked();
 });
 
 test('renders derived character detail sections', async () => {

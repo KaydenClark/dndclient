@@ -4,6 +4,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/auth';
 import PlayersCharacter from '../../pages/characters/playersCharacter';
 import CharactersList from '../../pages/characters/charactersList';
+import CharacterNew from '../../pages/characters/CharacterNew';
 import Home from '../../pages/home/home';
 import { SignIn } from '../../pages/users/SignIn';
 import { SignUp } from '../../pages/users/SignUp';
@@ -30,6 +31,16 @@ export function AppRoutes() {
                 element={(
                     <ProtectedRoute>
                         <CharactersList />
+                    </ProtectedRoute>
+                )}
+            />
+            {/* Static /characters/new is matched ahead of the dynamic
+                /characters/:characterId route by react-router's ranking. */}
+            <Route
+                path="/characters/new"
+                element={(
+                    <ProtectedRoute>
+                        <CharacterNew />
                     </ProtectedRoute>
                 )}
             />

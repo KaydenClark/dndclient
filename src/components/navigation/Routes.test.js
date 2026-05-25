@@ -20,3 +20,15 @@ test('redirects protected routes to sign in when unauthenticated', () => {
 
     expect(screen.getByRole('heading', { name: /sign in/i })).toBeInTheDocument();
 });
+
+test('redirects the character creation route to sign in when unauthenticated', () => {
+    render(
+        <AuthProvider>
+            <MemoryRouter initialEntries={['/characters/new']}>
+                <AppRoutes />
+            </MemoryRouter>
+        </AuthProvider>
+    );
+
+    expect(screen.getByRole('heading', { name: /sign in/i })).toBeInTheDocument();
+});
