@@ -48,3 +48,80 @@ test('signOut clears persisted auth state', async () => {
         expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
     });
 });
+
+// ---------------------------------------------------------------------------
+// Additional auth context coverage
+// ---------------------------------------------------------------------------
+
+function SignInProbe() {
+    const { isAuthenticated, token, signIn, signOut } = useAuth();
+
+    return (
+        <div>
+            <span data-testid="status">{isAuthenticated ? 'authenticated' : 'anonymous'}</span>
+            <span data-testid="token">{token}</span>
+            <button type="button" onClick={() => signIn('new-token')}>Sign In</button>
+            <button type="button" onClick={signOut}>Sign Out</button>
+        </div>
+    );
+}
+
+test('starts as anonymous when localStorage is empty', () => {
+    render(
+        <AuthProvider>
+            <SignInProbe />
+        </AuthProvider>
+    );
+    expect(screen.getByTestId('status').textContent).toBe('anonymous');
+});
+
+test('signIn sets isAuthenticated to true', async () => {
+    render(
+        <AuthProvider>
+            <SignInProbe />
+        </AuthProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => {
+        expect(screen.getByTestId('status').textContent).toBe('authenticated');
+    });
+});
+
+test('signIn persists the token to localStorage', async () => {
+    render(
+        <AuthProvider>
+            <SignInProbe />
+        </AuthProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => {
+        expect(localStorage.getItem(STORAGE_KEY)).toBe('new-token');
+    });
+});
+
+test('token value is exposed through the context', async () => {
+    render(
+        <AuthProvider>
+            <SignInProbe />
+        </AuthProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => {
+        expect(screen.getByTestId('token').textContent).toBe('new-token');
+    });
+});
+
+test('isAuthenticated is false when token is an empty string', () => {
+    render(
+        <AuthProvider>
+            <SignInProbe />
+        </AuthProvider>
+    );
+    expect(screen.getByTestId('status').textContent).toBe('anonymous');
+});
