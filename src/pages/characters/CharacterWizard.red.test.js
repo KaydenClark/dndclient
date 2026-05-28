@@ -388,6 +388,71 @@ test('switching methods resets scores - Point Buy resets to all 8s', async () =>
     });
 });
 
+// ---------------------------------------------------------------------------
+// Class step: subclass early-gate
+// ---------------------------------------------------------------------------
+
+const BOOTSTRAP_WITH_SUBCLASSES = {
+    ...MOCK_BOOTSTRAP,
+    classes: [{
+        id: 'fighter',
+        name: 'Fighter',
+        subclassLevel: 3,
+        skillChoiceRules: { choose: 2, options: ['athletics', 'intimidation'] }
+    }],
+    subclasses: [{ id: 'champion', classId: 'fighter', name: 'Champion' }]
+};
+
+test('class step hides subclass select when starting level is below subclassLevel', async () => {
+    await renderWizard(BOOTSTRAP_WITH_SUBCLASSES);
+    await advanceTo('Class');
+
+    // Default level is 1; Fighter subclassLevel is 3 - subclass should be gated.
+    expect(screen.queryByRole('combobox', { name: /subclass/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/subclass picks at level 3/i)).toBeInTheDocument();
+});
+
+test('class step shows subclass select when starting level meets subclassLevel', async () => {
+    await renderWizard(BOOTSTRAP_WITH_SUBCLASSES);
+    await advanceTo('Class');
+
+    // Raise level to 3 to unlock the subclass picker.
+    const levelInput = screen.getByLabelText(/starting level/i);
+    fireEvent.change(levelInput, { target: { value: '3' } });
+
+    await waitFor(() => {
+        expect(screen.getByText(/subclass/i, { selector: 'label' })).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/subclass picks at level 3/i)).not.toBeInTheDocument();
+});
+
+test('class step shows subclass immediately for a class with subclassLevel 1', async () => {
+    await renderWizard({
+        ...MOCK_BOOTSTRAP,
+        classes: [{
+            id: 'cleric',
+            name: 'Cleric',
+            subclassLevel: 1,
+            skillChoiceRules: { choose: 2, options: ['history', 'insight'] }
+        }],
+        subclasses: [{ id: 'life-domain', classId: 'cleric', name: 'Life Domain' }]
+    });
+    await advanceTo('Class');
+
+    // Default level is 1 and Cleric unlocks at 1 - should show immediately.
+    expect(screen.getByText(/subclass/i, { selector: 'label' })).toBeInTheDocument();
+    expect(screen.queryByText(/subclass picks at level/i)).not.toBeInTheDocument();
+});
+
+test('class step shows no subclass UI when class has no subclasses', async () => {
+    // MOCK_BOOTSTRAP has no subclasses.
+    await renderWizard(MOCK_BOOTSTRAP);
+    await advanceTo('Class');
+
+    expect(screen.queryByText(/subclass/i, { selector: 'label' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/subclass picks at level/i)).not.toBeInTheDocument();
+});
+
 test('blocks next navigation when a required step is incomplete', async () => {
     await renderWizard();
 

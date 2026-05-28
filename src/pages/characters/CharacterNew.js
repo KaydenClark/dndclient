@@ -402,7 +402,14 @@ export default function CharacterNew() {
                     </div>
                 );
 
-            case STEP_CLASS:
+            case STEP_CLASS: {
+                // Subclass unlock: hide the subclass picker until the starting level
+                // meets the class's subclassLevel threshold (e.g. Fighter=3, Wizard=2, Cleric=1).
+                // subclassLevel absent/null means no gate - show the picker if options exist.
+                const classSubclassLevel = selectedClass?.subclassLevel ?? null;
+                const subclassUnlocked =
+                    classSubclassLevel === null || Number(form.level) >= classSubclassLevel;
+
                 return (
                     <div className="wizard-step">
                         <label className="wizard-step-label">Class</label>
@@ -416,10 +423,21 @@ export default function CharacterNew() {
                                     <option key={classDoc.id} value={classDoc.id}>{classDoc.name}</option>
                                 ))}
                         </select>
-                        {subclassOptions.length > 0 ? (
+                        <label className="wizard-step-label" htmlFor="wizard-starting-level">Starting Level</label>
+                        <input
+                            id="wizard-starting-level"
+                            type="number"
+                            min="1"
+                            max="20"
+                            value={form.level}
+                            aria-label="Starting level"
+                            onChange={(event) => updateField('level', event.target.value)}
+                        />
+                        {subclassOptions.length > 0 && subclassUnlocked ? (
                             <>
                                 <label className="wizard-step-label">Subclass</label>
                                 <select
+                                    aria-label="Subclass"
                                     value={form.subclassId}
                                     onChange={(event) => updateField('subclassId', event.target.value)}
                                 >
@@ -429,16 +447,14 @@ export default function CharacterNew() {
                                 </select>
                             </>
                         ) : null}
-                        <label className="wizard-step-label">Starting Level</label>
-                        <input
-                            type="number"
-                            min="1"
-                            max="20"
-                            value={form.level}
-                            onChange={(event) => updateField('level', event.target.value)}
-                        />
+                        {subclassOptions.length > 0 && !subclassUnlocked ? (
+                            <p className="status-copy">
+                                Subclass picks at level {classSubclassLevel}. Raise starting level to unlock.
+                            </p>
+                        ) : null}
                     </div>
                 );
+            }
 
             case STEP_BACKGROUND:
                 return (

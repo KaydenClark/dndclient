@@ -212,6 +212,38 @@ describe('LevelUpStudio - spell selection (spellcasting class)', () => {
     });
 });
 
+describe('LevelUpStudio - subclass unlock notice', () => {
+    test('shows notice when planner level is below subclassLevel', () => {
+        renderStudio({ planner: { ...basePlanner, level: 2 }, subclassLevel: 3 });
+        expect(screen.getByText(/subclass unlocks at level 3/i)).toBeInTheDocument();
+    });
+
+    test('notice contains the correct unlock level', () => {
+        renderStudio({ planner: { ...basePlanner, level: 1 }, subclassLevel: 2 });
+        expect(screen.getByText(/subclass unlocks at level 2/i)).toBeInTheDocument();
+    });
+
+    test('no notice when planner level equals subclassLevel', () => {
+        renderStudio({ planner: { ...basePlanner, level: 3 }, subclassLevel: 3 });
+        expect(screen.queryByText(/subclass unlocks/i)).not.toBeInTheDocument();
+    });
+
+    test('no notice when planner level is above subclassLevel', () => {
+        renderStudio({ planner: { ...basePlanner, level: 5 }, subclassLevel: 3 });
+        expect(screen.queryByText(/subclass unlocks/i)).not.toBeInTheDocument();
+    });
+
+    test('no notice when subclassLevel is not provided', () => {
+        renderStudio({ planner: { ...basePlanner, level: 1 } });
+        expect(screen.queryByText(/subclass unlocks/i)).not.toBeInTheDocument();
+    });
+
+    test('no notice when subclassLevel is null', () => {
+        renderStudio({ planner: { ...basePlanner, level: 1 }, subclassLevel: null });
+        expect(screen.queryByText(/subclass unlocks/i)).not.toBeInTheDocument();
+    });
+});
+
 describe('LevelUpStudio - non-spellcasting class', () => {
     test('shows "does not use spell selection" message when spellcasting.ability is falsy', () => {
         renderStudio({

@@ -351,6 +351,26 @@ export default function PlayersCharacter() {
         }
     }
 
+    // Phase 8: Temp HP quick control. Persists tempHp without opening edit mode.
+    async function handleTempHpChange(nextTempHp) {
+        setIsSaving(true);
+        setError('');
+        setSaveMessage('');
+
+        try {
+            const nextCharacter = await updateCharacter(token, characterId, { tempHp: nextTempHp });
+
+            setCharacter(nextCharacter);
+            setPlanner(syncPlanner(nextCharacter));
+            setEditForm(syncEditForm(nextCharacter));
+            setSaveMessage('Temp HP updated.');
+        } catch (requestError) {
+            setError(requestError.response?.data?.error || 'Unable to update temp HP.');
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
     // Phase 1: HP quick control. Persists currentHp without opening edit mode.
     async function handleHpChange(nextHp) {
         setIsSaving(true);
@@ -456,6 +476,9 @@ export default function PlayersCharacter() {
     const leveledSpellOptions = availableSpells.filter((spell) => spell.level > 0);
     const subclassOptions = compendium.subclasses.filter((subclass) => subclass.classId === editForm.classId);
     const armorOptions = compendium.armor.filter((armor) => armor.category !== 'shield');
+    // Subclass unlock level for the current character's class - drives the notice in LevelUpStudio.
+    const activeClassData = (compendium.classes || []).find((c) => c.id === character.classId);
+    const activeSubclassLevel = activeClassData?.subclassLevel ?? null;
     const shieldOptions = compendium.armor.filter((armor) => armor.category === 'shield');
 
     return (
@@ -475,6 +498,7 @@ export default function PlayersCharacter() {
                 character={character}
                 showHpControls={mode === 'view'}
                 onHpChange={handleHpChange}
+                onTempHpChange={handleTempHpChange}
                 isSaving={isSaving}
             />
 
@@ -510,8 +534,10 @@ export default function PlayersCharacter() {
                     onCancel={closeActiveMode}
                     onSave={handleSaveLevelUp}
                     onToggleSpell={toggleSelection}
+                    subclassLevel={activeSubclassLevel}
                 />
             ) : null}
+
 
             <AbilityScores character={character} />
 
