@@ -3,54 +3,124 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../context/auth';
 import { createCharacter, fetchCompendiumBootstrap } from '../../lib/api';
-import { ABILITY_ORDER } from './components/characterFormatters';
+import { ABILITY_ORDER, formatSkillLabel } from './components/characterFormatters';
 import BackgroundField from './components/BackgroundField';
 import SkillSelector from './components/SkillSelector';
 
-// Phase 2-friendly default ability spread (standard array) so the form is
-// usable immediately without forcing the player to type six numbers.
+// Wizard step definitions - order matters, index is the step number.
+const STEPS = [
+    'Name',
+    'Race',
+    'Class',
+    'Background and Alignment',
+    'Ability Scores',
+    'Skill Selection',
+    'Review'
+];
+
+// All nine standard D&D alignments.
+const ALIGNMENTS = [
+    'Lawful Good',
+    'Neutral Good',
+    'Chaotic Good',
+    'Lawful Neutral',
+    'True Neutral',
+    'Chaotic Neutral',
+    'Lawful Evil',
+    'Neutral Evil',
+    'Chaotic Evil'
+];
+
+// Ability score methods available on the Ability Scores step.
+const SCORE_METHODS = {
+    STANDARD: 'standard',
+    POINT_BUY: 'pointBuy',
+    ROLL: 'roll'
+};
+
+// Standard array defaults so new characters are immediately playable.
+const STANDARD_ARRAY = { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 };
+
+// Point buy: each score's cost in points. Valid range 8-15.
+// PHB table: 8=0, 9=1, 10=2, 11=3, 12=4, 13=5, 14=7, 15=9.
+const POINT_BUY_COSTS = { 8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9 };
+const POINT_BUY_BUDGET = 27;
+const POINT_BUY_MIN = 8;
+const POINT_BUY_MAX = 15;
+
+// Simulate 4d6 drop lowest for a single ability score.
+function rollAbility() {
+    const rolls = Array.from({ length: 4 }, () => Math.floor(Math.random() * 6) + 1);
+    rolls.sort((a, b) => a - b);
+    // Drop the lowest (index 0 after ascending sort), sum the rest.
+    return rolls.slice(1).reduce((sum, n) => sum + n, 0);
+}
+
+// Derive unique race group names from the races list, sorted alphabetically.
+// Each group name maps to one or more specific race variants (subraces).
+function getRaceGroups(races) {
+    const groups = [...new Set(races.map((r) => r.raceGroup || r.name))];
+    return groups.sort((a, b) => a.localeCompare(b));
+}
+
+const STEP_NAME = 0;
+const STEP_RACE = 1;
+const STEP_CLASS = 2;
+const STEP_BACKGROUND = 3;
+const STEP_ABILITIES = 4;
+const STEP_SKILLS = 5;
+const STEP_REVIEW = 6;
+
+// Default form state. scoreMethod drives which ability score UI is shown.
 const initialForm = {
     characterName: '',
+    raceGroupId: '',   // UI-only: drives the base-race -> subrace two-step
     raceId: '',
     classId: '',
     subclassId: '',
     background: '',
     alignment: '',
     level: 1,
-    baseAbilityScores: {
-        str: 15,
-        dex: 14,
-        con: 13,
-        int: 12,
-        wis: 10,
-        cha: 8
-    },
-    // Phase 1: class skill proficiency picks.
+    scoreMethod: SCORE_METHODS.STANDARD,
+    baseAbilityScores: { ...STANDARD_ARRAY },
     skillProficiencies: []
 };
 
-// Fills race/class/subclass with the first valid compendium option once the
-// bootstrap data loads, so the selects are never empty.
+// Pre-fills race, class, subclass, and background from the first available
+// compendium option so selects are never in an empty/invalid state on load.
+// Also pre-selects the first race group and a valid subrace within that group.
 function syncFormWithCompendium(currentForm, bootstrap) {
-    const raceId = currentForm.raceId || bootstrap.races?.[0]?.id || '';
-    const classId = currentForm.classId || bootstrap.classes?.[0]?.id || '';
-    const matchingSubclasses = (bootstrap.subclasses || []).filter((subclass) => subclass.classId === classId);
-    const subclassId = matchingSubclasses.some((subclass) => subclass.id === currentForm.subclassId)
+    const sortedRaces = [...(bootstrap.races || [])].sort((a, b) => a.name.localeCompare(b.name));
+    const raceGroups = getRaceGroups(sortedRaces);
+
+    // Pick the first race group alphabetically, then pick the first race in that group.
+    const raceGroupId = currentForm.raceGroupId || raceGroups[0] || '';
+    const racesInGroup = sortedRaces.filter((r) => (r.raceGroup || r.name) === raceGroupId);
+    const raceId = currentForm.raceId && racesInGroup.some((r) => r.id === currentForm.raceId)
+        ? currentForm.raceId
+        : (racesInGroup[0]?.id || '');
+
+    const sortedClasses = [...(bootstrap.classes || [])].sort((a, b) => a.name.localeCompare(b.name));
+    const classId = currentForm.classId || sortedClasses[0]?.id || '';
+
+    const matchingSubclasses = (bootstrap.subclasses || []).filter((s) => s.classId === classId);
+    const subclassId = matchingSubclasses.some((s) => s.id === currentForm.subclassId)
         ? currentForm.subclassId
         : (matchingSubclasses[0]?.id || '');
 
-    return {
-        ...currentForm,
-        raceId,
-        classId,
-        subclassId
-    };
+    // Pre-select first background so the review step always has a value to show.
+    const background = currentForm.background || bootstrap.backgrounds?.[0]?.id || '';
+
+    return { ...currentForm, raceGroupId, raceId, classId, subclassId, background };
 }
 
-// Dedicated character creation page at /characters/new. Split out of the
-// roster list (Phase 0, Milestone 2) so creation has its own route and the
-// list page stays a simple roster.
+// Phase 2: guided multi-step character creation wizard.
+// Steps: Name -> Race -> Class -> Background + Alignment -> Ability Scores
+//         -> Skill Selection -> Review.
+// The Review step shows a proficiency summary (background + class skills)
+// before the player submits.
 export default function CharacterNew() {
+    const [step, setStep] = useState(STEP_NAME);
     const [compendium, setCompendium] = useState({
         races: [],
         classes: [],
@@ -82,11 +152,11 @@ export default function CharacterNew() {
                         subclasses: bootstrap.subclasses || [],
                         backgrounds: bootstrap.backgrounds || []
                     });
-                    setForm((currentForm) => syncFormWithCompendium(currentForm, bootstrap));
+                    setForm((prev) => syncFormWithCompendium(prev, bootstrap));
                 }
-            } catch (requestError) {
+            } catch (loadError) {
                 if (!ignore) {
-                    setError(requestError.response?.data?.error || 'Unable to load character options.');
+                    setError(loadError.response?.data?.error || 'Unable to load character options.');
                 }
             } finally {
                 if (!ignore) {
@@ -102,30 +172,32 @@ export default function CharacterNew() {
         };
     }, []);
 
-    const subclassOptions = compendium.subclasses.filter((subclass) => subclass.classId === form.classId);
-    const selectedClass = compendium.classes.find((classDoc) => classDoc.id === form.classId);
-
     function updateField(key, value) {
-        setForm((currentForm) => ({ ...currentForm, [key]: value }));
+        setForm((prev) => ({ ...prev, [key]: value }));
     }
 
     function updateAbilityScore(ability, value) {
-        setForm((currentForm) => ({
-            ...currentForm,
-            baseAbilityScores: {
-                ...currentForm.baseAbilityScores,
-                [ability]: value
-            }
+        setForm((prev) => ({
+            ...prev,
+            baseAbilityScores: { ...prev.baseAbilityScores, [ability]: value }
         }));
     }
 
-    // Changing class resets the subclass and clears skill picks, since skill
-    // options are class-specific.
-    function changeClass(nextClassId) {
-        const nextSubclasses = compendium.subclasses.filter((subclass) => subclass.classId === nextClassId);
+    // Changing the base race group resets raceId to the first subrace in that group.
+    // Clears any prior subrace pick so the UI doesn't hold a stale id.
+    function changeRaceGroup(nextGroupId) {
+        const racesInNextGroup = sortedRacesForGroup(nextGroupId);
+        const nextRaceId = racesInNextGroup[0]?.id || '';
+        setForm((prev) => ({ ...prev, raceGroupId: nextGroupId, raceId: nextRaceId }));
+    }
 
-        setForm((currentForm) => ({
-            ...currentForm,
+    // Changing class resets subclass and clears skill picks since the new
+    // class has its own skill choice rules.
+    function changeClass(nextClassId) {
+        const nextSubclasses = compendium.subclasses.filter((s) => s.classId === nextClassId);
+
+        setForm((prev) => ({
+            ...prev,
             classId: nextClassId,
             subclassId: nextSubclasses[0]?.id || '',
             skillProficiencies: []
@@ -133,20 +205,72 @@ export default function CharacterNew() {
     }
 
     function toggleSkill(skill) {
-        setForm((currentForm) => {
-            const isSelected = currentForm.skillProficiencies.includes(skill);
+        setForm((prev) => {
+            const isSelected = prev.skillProficiencies.includes(skill);
 
             return {
-                ...currentForm,
+                ...prev,
                 skillProficiencies: isSelected
-                    ? currentForm.skillProficiencies.filter((value) => value !== skill)
-                    : [...currentForm.skillProficiencies, skill]
+                    ? prev.skillProficiencies.filter((s) => s !== skill)
+                    : [...prev.skillProficiencies, skill]
             };
         });
     }
 
-    async function handleCreate(event) {
-        event.preventDefault();
+    // Point buy: increment/decrement a single score within budget and range.
+    function adjustPointBuyScore(ability, delta) {
+        setForm((prev) => {
+            const currentScore = prev.baseAbilityScores[ability];
+            const nextScore = currentScore + delta;
+
+            if (nextScore < POINT_BUY_MIN || nextScore > POINT_BUY_MAX) return prev;
+
+            // Compute spent points with the proposed change applied.
+            const nextScores = { ...prev.baseAbilityScores, [ability]: nextScore };
+            const spent = Object.values(nextScores).reduce(
+                (sum, score) => sum + (POINT_BUY_COSTS[score] ?? 0),
+                0
+            );
+
+            if (spent > POINT_BUY_BUDGET) return prev; // over budget, reject
+
+            return { ...prev, baseAbilityScores: nextScores };
+        });
+    }
+
+    // Roll: generate 4d6 drop-lowest for one or all ability scores.
+    function rollScore(ability) {
+        setForm((prev) => ({
+            ...prev,
+            baseAbilityScores: { ...prev.baseAbilityScores, [ability]: rollAbility() }
+        }));
+    }
+
+    function rollAllScores() {
+        setForm((prev) => ({
+            ...prev,
+            baseAbilityScores: Object.fromEntries(
+                Object.keys(prev.baseAbilityScores).map((ability) => [ability, rollAbility()])
+            )
+        }));
+    }
+
+    // Switching score method resets scores to appropriate defaults so the
+    // budget display and UI are immediately coherent.
+    function changeScoreMethod(method) {
+        const defaultScores =
+            method === SCORE_METHODS.POINT_BUY
+                ? { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 }
+                : { ...STANDARD_ARRAY };
+
+        setForm((prev) => ({
+            ...prev,
+            scoreMethod: method,
+            baseAbilityScores: defaultScores
+        }));
+    }
+
+    async function handleCreate() {
         setIsSaving(true);
         setError('');
 
@@ -160,17 +284,356 @@ export default function CharacterNew() {
                 alignment: form.alignment,
                 level: Number(form.level) || 1,
                 baseAbilityScores: Object.fromEntries(
-                    Object.entries(form.baseAbilityScores).map(([ability, value]) => [ability, Number(value) || 0])
+                    Object.entries(form.baseAbilityScores).map(([k, v]) => [k, Number(v) || 0])
                 ),
                 skillProficiencies: form.skillProficiencies
             });
 
-            // Hand off to the level-up flow so the player picks spells next.
+            // Drop into level-up mode so the player picks spells immediately.
             navigate(`/characters/${nextCharacter._id}?mode=levelUp`);
-        } catch (requestError) {
-            setError(requestError.response?.data?.error || 'Unable to create character.');
+        } catch (saveError) {
+            setError(saveError.response?.data?.error || 'Unable to create character.');
         } finally {
             setIsSaving(false);
+        }
+    }
+
+    // Derived values used across multiple step renderers.
+
+    // Helper: races in a given group sorted alphabetically.
+    function sortedRacesForGroup(groupId) {
+        return [...compendium.races]
+            .filter((r) => (r.raceGroup || r.name) === groupId)
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    // All unique race group names, sorted alphabetically.
+    const raceGroups = getRaceGroups(compendium.races);
+    // Races available under the currently selected group.
+    const racesInSelectedGroup = sortedRacesForGroup(form.raceGroupId);
+    // Show the subrace picker only when a group has more than one variant.
+    const groupHasSubraces = racesInSelectedGroup.length > 1;
+
+    const subclassOptions = [...compendium.subclasses.filter((s) => s.classId === form.classId)]
+        .sort((a, b) => a.name.localeCompare(b.name));
+    const selectedClass = compendium.classes.find((c) => c.id === form.classId);
+    const selectedRace = compendium.races.find((r) => r.id === form.raceId);
+    const selectedBackground = compendium.backgrounds.find((b) => b.id === form.background);
+    const selectedSubclass = subclassOptions.find((s) => s.id === form.subclassId);
+    // Background-granted skills lock those slots in the SkillSelector so
+    // the player does not waste a class pick on a skill they already have.
+    const backgroundGrantedSkills = selectedBackground?.skillProficiencies || [];
+
+    const isLastContentStep = step === STEP_SKILLS;
+    const isReview = step === STEP_REVIEW;
+
+    // Each step renders only its own fields. State stays in the parent so
+    // clicking Back never loses earlier answers.
+    function renderStep() {
+        switch (step) {
+            case STEP_NAME:
+                return (
+                    <div className="wizard-step">
+                        <label className="wizard-step-label">Character Name</label>
+                        <input
+                            type="text"
+                            placeholder="Character Name"
+                            value={form.characterName}
+                            onChange={(event) => updateField('characterName', event.target.value)}
+                        />
+                    </div>
+                );
+
+            case STEP_RACE:
+                return (
+                    <div className="wizard-step">
+                        {/* Base race select - shows unique groups (e.g. Dwarf, Elf, Halfling, Human). */}
+                        <label className="wizard-step-label">Race</label>
+                        <select
+                            aria-label="Race"
+                            value={form.raceGroupId}
+                            onChange={(event) => changeRaceGroup(event.target.value)}
+                        >
+                            {raceGroups.map((group) => (
+                                <option key={group} value={group}>{group}</option>
+                            ))}
+                        </select>
+
+                        {/* Subrace select - only shown when the group has multiple variants. */}
+                        {groupHasSubraces ? (
+                            <>
+                                <label className="wizard-step-label">Subrace</label>
+                                <select
+                                    value={form.raceId}
+                                    onChange={(event) => updateField('raceId', event.target.value)}
+                                    aria-label="Subrace"
+                                >
+                                    {racesInSelectedGroup.map((race) => (
+                                        <option key={race.id} value={race.id}>{race.name}</option>
+                                    ))}
+                                </select>
+                            </>
+                        ) : null}
+                    </div>
+                );
+
+            case STEP_CLASS:
+                return (
+                    <div className="wizard-step">
+                        <label className="wizard-step-label">Class</label>
+                        <select
+                            value={form.classId}
+                            onChange={(event) => changeClass(event.target.value)}
+                        >
+                            {[...compendium.classes]
+                                .sort((a, b) => a.name.localeCompare(b.name))
+                                .map((classDoc) => (
+                                    <option key={classDoc.id} value={classDoc.id}>{classDoc.name}</option>
+                                ))}
+                        </select>
+                        {subclassOptions.length > 0 ? (
+                            <>
+                                <label className="wizard-step-label">Subclass</label>
+                                <select
+                                    value={form.subclassId}
+                                    onChange={(event) => updateField('subclassId', event.target.value)}
+                                >
+                                    {subclassOptions.map((sub) => (
+                                        <option key={sub.id} value={sub.id}>{sub.name}</option>
+                                    ))}
+                                </select>
+                            </>
+                        ) : null}
+                        <label className="wizard-step-label">Starting Level</label>
+                        <input
+                            type="number"
+                            min="1"
+                            max="20"
+                            value={form.level}
+                            onChange={(event) => updateField('level', event.target.value)}
+                        />
+                    </div>
+                );
+
+            case STEP_BACKGROUND:
+                return (
+                    <div className="wizard-step">
+                        <BackgroundField
+                            backgrounds={compendium.backgrounds}
+                            value={form.background}
+                            onChange={(value) => updateField('background', value)}
+                        />
+                        {/* Alignment: structured select rather than free text so values are consistent. */}
+                        <label className="wizard-step-label">Alignment</label>
+                        <select
+                            value={form.alignment}
+                            onChange={(event) => updateField('alignment', event.target.value)}
+                            aria-label="Alignment"
+                        >
+                            <option value="">Select an alignment</option>
+                            {ALIGNMENTS.map((alignment) => (
+                                <option key={alignment} value={alignment}>{alignment}</option>
+                            ))}
+                        </select>
+                    </div>
+                );
+
+            case STEP_ABILITIES: {
+                // Point buy: show how many points are spent out of the budget.
+                const pointsSpent = Object.values(form.baseAbilityScores).reduce(
+                    (sum, score) => sum + (POINT_BUY_COSTS[score] ?? 0),
+                    0
+                );
+                const pointsRemaining = POINT_BUY_BUDGET - pointsSpent;
+
+                return (
+                    <div className="wizard-step">
+                        {/* Method selector: Standard Array / Point Buy / Roll. */}
+                        <div className="wizard-method-tabs" role="group" aria-label="Ability score method">
+                            {[
+                                { key: SCORE_METHODS.STANDARD, label: 'Standard Array' },
+                                { key: SCORE_METHODS.POINT_BUY, label: 'Point Buy' },
+                                { key: SCORE_METHODS.ROLL, label: 'Roll' }
+                            ].map(({ key, label }) => (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    className={`wizard-method-tab${form.scoreMethod === key ? ' wizard-method-tab--active' : ''}`}
+                                    aria-pressed={form.scoreMethod === key ? 'true' : 'false'}
+                                    onClick={() => changeScoreMethod(key)}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Standard Array: free numeric inputs, pre-filled with 15/14/13/12/10/8. */}
+                        {form.scoreMethod === SCORE_METHODS.STANDARD && (
+                            <>
+                                <span className="detail-label">
+                                    Standard Array: 15 / 14 / 13 / 12 / 10 / 8 - assign to taste.
+                                </span>
+                                <div className="ability-score-grid">
+                                    {ABILITY_ORDER.map((ability) => (
+                                        <label key={ability} className="ability-score-field">
+                                            <span>{ability.toUpperCase()}</span>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="30"
+                                                value={form.baseAbilityScores[ability]}
+                                                onChange={(event) =>
+                                                    updateAbilityScore(ability, event.target.value)
+                                                }
+                                            />
+                                        </label>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+
+                        {/* Point Buy: 27 points, scores locked to 8-15, PHB cost table. */}
+                        {form.scoreMethod === SCORE_METHODS.POINT_BUY && (
+                            <>
+                                <span className="detail-label">
+                                    Point Buy - {pointsRemaining} / {POINT_BUY_BUDGET} points remaining.
+                                    Scores range 8-15.
+                                </span>
+                                <div className="ability-score-grid">
+                                    {ABILITY_ORDER.map((ability) => {
+                                        const score = form.baseAbilityScores[ability];
+                                        const costToIncrease = POINT_BUY_COSTS[score + 1] - POINT_BUY_COSTS[score];
+                                        const canIncrease =
+                                            score < POINT_BUY_MAX && pointsRemaining >= costToIncrease;
+                                        const canDecrease = score > POINT_BUY_MIN;
+
+                                        return (
+                                            <div key={ability} className="ability-score-field">
+                                                <span>{ability.toUpperCase()}</span>
+                                                <div className="point-buy-controls">
+                                                    <button
+                                                        type="button"
+                                                        aria-label={`Decrease ${ability}`}
+                                                        disabled={!canDecrease}
+                                                        onClick={() => adjustPointBuyScore(ability, -1)}
+                                                    >
+                                                        -
+                                                    </button>
+                                                    <span aria-label={`${ability} score`}>{score}</span>
+                                                    <button
+                                                        type="button"
+                                                        aria-label={`Increase ${ability}`}
+                                                        disabled={!canIncrease}
+                                                        onClick={() => adjustPointBuyScore(ability, 1)}
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
+                                                <small>Cost: {POINT_BUY_COSTS[score]}</small>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        )}
+
+                        {/* Roll: 4d6 drop lowest per stat, re-rollable individually or all at once. */}
+                        {form.scoreMethod === SCORE_METHODS.ROLL && (
+                            <>
+                                <span className="detail-label">
+                                    Roll 4d6 drop lowest per ability. Re-roll any score individually.
+                                </span>
+                                <button
+                                    type="button"
+                                    className="secondary-action"
+                                    onClick={rollAllScores}
+                                >
+                                    Roll All
+                                </button>
+                                <div className="ability-score-grid">
+                                    {ABILITY_ORDER.map((ability) => (
+                                        <div key={ability} className="ability-score-field">
+                                            <span>{ability.toUpperCase()}</span>
+                                            <span aria-label={`${ability} score`}>
+                                                {form.baseAbilityScores[ability]}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                aria-label={`Reroll ${ability}`}
+                                                onClick={() => rollScore(ability)}
+                                            >
+                                                Reroll
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </div>
+                );
+            }
+
+            case STEP_SKILLS:
+                return (
+                    <SkillSelector
+                        skillChoiceRules={selectedClass?.skillChoiceRules}
+                        selectedSkills={form.skillProficiencies}
+                        grantedSkills={backgroundGrantedSkills}
+                        onToggle={toggleSkill}
+                    />
+                );
+
+            case STEP_REVIEW:
+                return (
+                    <div className="wizard-step">
+                        <h4>Review Your Character</h4>
+                        <ul className="detail-list">
+                            <li><span>Name</span><strong>{form.characterName || '-'}</strong></li>
+                            <li><span>Race</span><strong>{selectedRace?.name || '-'}</strong></li>
+                            <li>
+                                <span>Class</span>
+                                <strong>
+                                    {selectedClass?.name || '-'}
+                                    {selectedSubclass ? ` - ${selectedSubclass.name}` : ''}
+                                </strong>
+                            </li>
+                            <li>
+                                <span>Background</span>
+                                <strong>{selectedBackground?.name || form.background || '-'}</strong>
+                            </li>
+                            <li><span>Alignment</span><strong>{form.alignment || '-'}</strong></li>
+                            <li><span>Level</span><strong>{form.level}</strong></li>
+                        </ul>
+
+                        <h4>Proficiency Summary</h4>
+                        <ul className="detail-list">
+                            {backgroundGrantedSkills.length > 0 ? (
+                                <li>
+                                    <span>Background Skills</span>
+                                    <strong>
+                                        {backgroundGrantedSkills.map(formatSkillLabel).join(', ')}
+                                    </strong>
+                                </li>
+                            ) : null}
+                            {form.skillProficiencies.length > 0 ? (
+                                <li>
+                                    <span>Class Skills</span>
+                                    <strong>
+                                        {form.skillProficiencies.map(formatSkillLabel).join(', ')}
+                                    </strong>
+                                </li>
+                            ) : null}
+                            {form.skillProficiencies.length === 0 && backgroundGrantedSkills.length === 0 ? (
+                                <li><span>No skill proficiencies selected yet.</span></li>
+                            ) : null}
+                        </ul>
+
+                        {error ? <p className="form-error">{error}</p> : null}
+                    </div>
+                );
+
+            default:
+                return null;
         }
     }
 
@@ -186,88 +649,66 @@ export default function CharacterNew() {
                 </Link>
             </div>
 
-            {error ? <p className="form-error">{error}</p> : null}
-            {isLoading ? <p className="status-copy">Loading character options...</p> : null}
+            {error && step !== STEP_REVIEW ? <p className="form-error">{error}</p> : null}
 
-            {!isLoading ? (
-                <form className="character-create-form" onSubmit={handleCreate}>
-                    <input
-                        type="text"
-                        placeholder="Character Name"
-                        value={form.characterName}
-                        onChange={(event) => updateField('characterName', event.target.value)}
-                    />
-                    <select
-                        value={form.raceId}
-                        onChange={(event) => updateField('raceId', event.target.value)}
-                    >
-                        {compendium.races.map((race) => (
-                            <option key={race.id} value={race.id}>{race.name}</option>
-                        ))}
-                    </select>
-                    <select
-                        value={form.classId}
-                        onChange={(event) => changeClass(event.target.value)}
-                    >
-                        {compendium.classes.map((classDoc) => (
-                            <option key={classDoc.id} value={classDoc.id}>{classDoc.name}</option>
-                        ))}
-                    </select>
-                    <select
-                        value={form.subclassId}
-                        onChange={(event) => updateField('subclassId', event.target.value)}
-                    >
-                        {subclassOptions.length === 0 ? <option value="">No subclass</option> : null}
-                        {subclassOptions.map((subclass) => (
-                            <option key={subclass.id} value={subclass.id}>{subclass.name}</option>
-                        ))}
-                    </select>
-                    <input
-                        type="number"
-                        min="1"
-                        max="20"
-                        placeholder="Level"
-                        value={form.level}
-                        onChange={(event) => updateField('level', event.target.value)}
-                    />
-                    <BackgroundField
-                        backgrounds={compendium.backgrounds}
-                        value={form.background}
-                        onChange={(value) => updateField('background', value)}
-                    />
-                    <input
-                        type="text"
-                        placeholder="Alignment"
-                        value={form.alignment}
-                        onChange={(event) => updateField('alignment', event.target.value)}
-                    />
-                    <div className="ability-score-grid">
-                        {ABILITY_ORDER.map((ability) => (
-                            <label key={ability} className="ability-score-field">
-                                <span>{ability.toUpperCase()}</span>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max="30"
-                                    value={form.baseAbilityScores[ability]}
-                                    onChange={(event) => updateAbilityScore(ability, event.target.value)}
-                                />
-                            </label>
+            {isLoading ? (
+                <p className="status-copy">Loading character options...</p>
+            ) : (
+                <>
+                    {/* Tab bar: all steps visible so the player can see where
+                        they are. Clicking a tab allows quick navigation without
+                        losing state in any step. */}
+                    <div role="tablist" className="wizard-tabs">
+                        {STEPS.map((label, index) => (
+                            <button
+                                key={label}
+                                role="tab"
+                                type="button"
+                                aria-selected={step === index ? 'true' : 'false'}
+                                className={`wizard-tab${step === index ? ' wizard-tab--active' : ''}`}
+                                onClick={() => setStep(index)}
+                            >
+                                {label}
+                            </button>
                         ))}
                     </div>
 
-                    {/* Phase 1: class skill proficiency selection. */}
-                    <SkillSelector
-                        skillChoiceRules={selectedClass?.skillChoiceRules}
-                        selectedSkills={form.skillProficiencies}
-                        onToggle={toggleSkill}
-                    />
+                    <div className="wizard-step-content">
+                        {renderStep()}
+                    </div>
 
-                    <button type="submit" className="primary-action" disabled={isSaving}>
-                        {isSaving ? 'Creating...' : 'Create Character'}
-                    </button>
-                </form>
-            ) : null}
+                    <div className="wizard-nav">
+                        {step > 0 ? (
+                            <button
+                                type="button"
+                                className="secondary-action"
+                                onClick={() => setStep((prev) => prev - 1)}
+                            >
+                                Back
+                            </button>
+                        ) : null}
+
+                        {isReview ? (
+                            <button
+                                type="button"
+                                className="primary-action"
+                                onClick={handleCreate}
+                                disabled={isSaving}
+                            >
+                                {isSaving ? 'Creating...' : 'Create Character'}
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                className="primary-action"
+                                onClick={() => setStep((prev) => prev + 1)}
+                            >
+                                {isLastContentStep ? 'Review' : 'Next'}
+                            </button>
+                        )}
+                    </div>
+                </>
+            )}
         </section>
     );
 }
