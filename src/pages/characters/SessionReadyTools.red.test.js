@@ -111,7 +111,7 @@ beforeEach(() => {
     vi.resetAllMocks();
 });
 
-test.skip('expends and refreshes spell slots directly from the character sheet', async () => {
+test('expends and refreshes spell slots directly from the character sheet', async () => {
     renderSheet();
 
     await waitFor(() => {
@@ -137,7 +137,7 @@ test.skip('expends and refreshes spell slots directly from the character sheet',
     });
 });
 
-test.skip('toggles active conditions using the imported conditions compendium', async () => {
+test('toggles active conditions using the imported conditions compendium', async () => {
     renderSheet();
 
     await waitFor(() => {
@@ -156,7 +156,7 @@ test.skip('toggles active conditions using the imported conditions compendium', 
     });
 });
 
-test.skip('tracks death saves without opening the edit form', async () => {
+test('tracks death saves without opening the edit form', async () => {
     renderSheet({ ...sheet, currentHp: 0 });
 
     await waitFor(() => {
@@ -173,7 +173,7 @@ test.skip('tracks death saves without opening the edit form', async () => {
     });
 });
 
-test.skip('spends and restores hit dice from the rest tracker', async () => {
+test('spends and restores hit dice from the rest tracker', async () => {
     renderSheet();
 
     await waitFor(() => {
@@ -192,7 +192,7 @@ test.skip('spends and restores hit dice from the rest tracker', async () => {
     });
 });
 
-test.skip('adds inventory items with quantity from the character sheet', async () => {
+test('adds inventory items with quantity from the character sheet', async () => {
     renderSheet();
 
     await waitFor(() => {

@@ -388,6 +388,43 @@
     gap: 0.2rem;
 }
 
+.slot-actions,
+.session-inline-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.session-inline-form {
+    align-items: flex-end;
+    margin-top: 1rem;
+}
+
+.session-inline-form label {
+    flex: 1 1 130px;
+}
+
+.session-inline-form input {
+    background: rgba(8, 15, 28, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 12px;
+    color: #f8f1e0;
+    min-height: 44px;
+    padding: 0 0.9rem;
+    width: 100%;
+}
+
+.spell-filter-input {
+    background: rgba(8, 15, 28, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 12px;
+    color: #f8f1e0;
+    margin-bottom: 0.85rem;
+    min-height: 44px;
+    padding: 0 0.9rem;
+    width: 100%;
+}
+
 @media (max-width: 640px) {
     .character-card {
         align-items: flex-start;

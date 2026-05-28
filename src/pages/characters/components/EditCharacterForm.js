@@ -2,6 +2,7 @@ import React from 'react';
 
 import { ABILITY_ORDER, CURRENCY_ORDER, formatSlug } from './characterFormatters';
 import BackgroundField from './BackgroundField';
+import { ALIGNMENTS } from './characterConstants';
 import SkillSelector from './SkillSelector';
 
 // Full edit form for the character sheet. All state lives in the page
@@ -93,12 +94,16 @@ export default function EditCharacterForm({
                     value={editForm.background}
                     onChange={(value) => onFieldChange('background', value)}
                 />
-                <input
-                    type="text"
-                    placeholder="Alignment"
+                <select
+                    aria-label="Alignment"
                     value={editForm.alignment}
                     onChange={(event) => onFieldChange('alignment', event.target.value)}
-                />
+                >
+                    <option value="">Select an alignment</option>
+                    {ALIGNMENTS.map((alignment) => (
+                        <option key={alignment} value={alignment}>{alignment}</option>
+                    ))}
+                </select>
                 <input
                     type="number"
                     placeholder="Current HP"

@@ -19,7 +19,7 @@ describe('SkillSelector - empty / no-rules state', () => {
                 onToggle={vi.fn()}
             />
         );
-        expect(screen.getByText(/no class skill choices available/i)).toBeInTheDocument();
+        expect(screen.getByText(/no skill choices for this class/i)).toBeInTheDocument();
     });
 
     test('shows fallback message when options array is empty', () => {
@@ -31,7 +31,7 @@ describe('SkillSelector - empty / no-rules state', () => {
                 onToggle={vi.fn()}
             />
         );
-        expect(screen.getByText(/no class skill choices available/i)).toBeInTheDocument();
+        expect(screen.getByText(/no skill choices for this class/i)).toBeInTheDocument();
     });
 });
 

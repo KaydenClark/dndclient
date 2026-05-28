@@ -5,6 +5,7 @@ import { useAuth } from '../../context/auth';
 import { createCharacter, fetchCompendiumBootstrap } from '../../lib/api';
 import { ABILITY_ORDER, formatSkillLabel } from './components/characterFormatters';
 import BackgroundField from './components/BackgroundField';
+import { ALIGNMENTS } from './components/characterConstants';
 import SkillSelector from './components/SkillSelector';
 
 // Wizard step definitions - order matters, index is the step number.
@@ -16,19 +17,6 @@ const STEPS = [
     'Ability Scores',
     'Skill Selection',
     'Review'
-];
-
-// All nine standard D&D alignments.
-const ALIGNMENTS = [
-    'Lawful Good',
-    'Neutral Good',
-    'Chaotic Good',
-    'Lawful Neutral',
-    'True Neutral',
-    'Chaotic Neutral',
-    'Lawful Evil',
-    'Neutral Evil',
-    'Chaotic Evil'
 ];
 
 // Ability score methods available on the Ability Scores step.
@@ -217,6 +205,34 @@ export default function CharacterNew() {
         });
     }
 
+    function getStepError(targetStep = step) {
+        if (targetStep === STEP_NAME && !form.characterName.trim()) {
+            return 'Character name is required.';
+        }
+
+        if (targetStep === STEP_RACE && !form.raceId) {
+            return 'Choose a race before continuing.';
+        }
+
+        if (targetStep === STEP_CLASS && !form.classId) {
+            return 'Choose a class before continuing.';
+        }
+
+        return '';
+    }
+
+    function goToNextStep() {
+        const validationError = getStepError();
+
+        if (validationError) {
+            setError(validationError);
+            return;
+        }
+
+        setError('');
+        setStep((prev) => prev + 1);
+    }
+
     // Point buy: increment/decrement a single score within budget and range.
     function adjustPointBuyScore(ability, delta) {
         setForm((prev) => {
@@ -271,6 +287,15 @@ export default function CharacterNew() {
     }
 
     async function handleCreate() {
+        const stepErrors = [STEP_NAME, STEP_RACE, STEP_CLASS]
+            .map((nextStep) => getStepError(nextStep))
+            .filter(Boolean);
+
+        if (stepErrors.length > 0) {
+            setError(stepErrors[0]);
+            return;
+        }
+
         setIsSaving(true);
         setError('');
 
@@ -628,7 +653,7 @@ export default function CharacterNew() {
                             ) : null}
                         </ul>
 
-                        {error ? <p className="form-error">{error}</p> : null}
+                        {error ? <p className="form-error" role="alert">{error}</p> : null}
                     </div>
                 );
 
@@ -649,7 +674,7 @@ export default function CharacterNew() {
                 </Link>
             </div>
 
-            {error && step !== STEP_REVIEW ? <p className="form-error">{error}</p> : null}
+            {error && step !== STEP_REVIEW ? <p className="form-error" role="alert">{error}</p> : null}
 
             {isLoading ? (
                 <p className="status-copy">Loading character options...</p>
@@ -701,7 +726,7 @@ export default function CharacterNew() {
                             <button
                                 type="button"
                                 className="primary-action"
-                                onClick={() => setStep((prev) => prev + 1)}
+                                onClick={goToNextStep}
                             >
                                 {isLastContentStep ? 'Review' : 'Next'}
                             </button>

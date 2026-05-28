@@ -1,19 +1,38 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import { formatModifier } from './characterFormatters';
 
 // One checkbox group for the spell planner (cantrips / known / prepared).
 function SpellSelectionGroup({ title, description, options, selectedIds, onToggle }) {
+    const [query, setQuery] = useState('');
+    const normalizedQuery = query.trim().toLowerCase();
+    const filteredOptions = normalizedQuery
+        ? options.filter((spell) => spell.name.toLowerCase().includes(normalizedQuery))
+        : options;
+
     return (
         <div className="levelup-spell-group">
             <div className="levelup-group-header">
                 <strong>{title}</strong>
                 <span>{description}</span>
             </div>
+            {options.length > 8 ? (
+                <input
+                    type="search"
+                    className="spell-filter-input"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder={`Filter ${title.toLowerCase()}`}
+                    aria-label={`Filter ${title}`}
+                />
+            ) : null}
             {options.length === 0 ? <p className="status-copy">No spells available for this list.</p> : null}
+            {options.length > 0 && filteredOptions.length === 0 ? (
+                <p className="status-copy">No spells match that filter.</p>
+            ) : null}
             {options.length > 0 ? (
                 <div className="spell-selector-list">
-                    {options.map((spell) => (
+                    {filteredOptions.map((spell) => (
                         <label key={spell.id} className="spell-selector-card">
                             <input
                                 type="checkbox"

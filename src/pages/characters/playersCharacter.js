@@ -14,6 +14,7 @@ import SpellPanel from './components/SpellPanel';
 import FeaturesPanel from './components/FeaturesPanel';
 import EditCharacterForm from './components/EditCharacterForm';
 import LevelUpStudio from './components/LevelUpStudio';
+import SessionToolsPanel from './components/SessionToolsPanel';
 
 // Builds the level-up planner snapshot from a character document.
 function syncPlanner(character) {
@@ -89,7 +90,8 @@ export default function PlayersCharacter() {
         weapons: [],
         armor: [],
         spells: [],
-        backgrounds: []
+        backgrounds: [],
+        conditions: []
     });
     const [planner, setPlanner] = useState(syncPlanner(null));
     const [editForm, setEditForm] = useState(syncEditForm(null));
@@ -130,7 +132,8 @@ export default function PlayersCharacter() {
                         weapons: bootstrap.weapons || [],
                         armor: bootstrap.armor || [],
                         spells: bootstrap.spells || [],
-                        backgrounds: bootstrap.backgrounds || []
+                        backgrounds: bootstrap.backgrounds || [],
+                        conditions: bootstrap.conditions || []
                     });
                 }
             } catch (requestError) {
@@ -368,6 +371,58 @@ export default function PlayersCharacter() {
         }
     }
 
+    async function saveSessionPatch(payload, message) {
+        setIsSaving(true);
+        setError('');
+        setSaveMessage('');
+
+        try {
+            const nextCharacter = await updateCharacter(token, characterId, payload);
+
+            setCharacter(nextCharacter);
+            setPlanner(syncPlanner(nextCharacter));
+            setEditForm(syncEditForm(nextCharacter));
+            setSaveMessage(message);
+        } catch (requestError) {
+            setError(requestError.response?.data?.error || 'Unable to update session tracker.');
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
+    function handleSpellSlotChange(slotKey, slotsExpended) {
+        saveSessionPatch({
+            spellSlots: {
+                ...(character.spellSlots || {}),
+                [slotKey]: {
+                    ...(character.spellSlots?.[slotKey] || {}),
+                    slotsExpended
+                }
+            }
+        }, 'Spell slots updated.');
+    }
+
+    function handleConditionToggle(conditionId) {
+        const activeConditions = character.conditions || [];
+        const nextConditions = activeConditions.includes(conditionId)
+            ? activeConditions.filter((value) => value !== conditionId)
+            : [...activeConditions, conditionId];
+
+        saveSessionPatch({ conditions: nextConditions }, 'Conditions updated.');
+    }
+
+    function handleDeathSaveChange(deathSaves) {
+        saveSessionPatch({ deathSaves }, 'Death saves updated.');
+    }
+
+    function handleHitDiceChange(hitDiceRemaining) {
+        saveSessionPatch({ hitDiceRemaining }, 'Hit dice updated.');
+    }
+
+    function handleInventoryChange(inventory) {
+        saveSessionPatch({ inventory }, 'Inventory updated.');
+    }
+
     if (isLoading) {
         return <section className="page-card"><p className="status-copy">Loading character...</p></section>;
     }
@@ -472,7 +527,21 @@ export default function PlayersCharacter() {
                 preparedSpells={preparedSpells}
                 knownSpells={knownSpells}
                 spellSlots={character.spellSlots}
+                isSaving={isSaving}
+                onSpellSlotChange={handleSpellSlotChange}
             />
+
+            {mode === 'view' ? (
+                <SessionToolsPanel
+                    character={character}
+                    conditions={compendium.conditions}
+                    isSaving={isSaving}
+                    onToggleCondition={handleConditionToggle}
+                    onDeathSaveChange={handleDeathSaveChange}
+                    onHitDiceChange={handleHitDiceChange}
+                    onInventoryChange={handleInventoryChange}
+                />
+            ) : null}
 
             <FeaturesPanel character={character} features={features} />
         </section>

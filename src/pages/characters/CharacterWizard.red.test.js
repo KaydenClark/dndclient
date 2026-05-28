@@ -65,6 +65,14 @@ async function advanceTo(targetStep) {
     const steps = ['Name', 'Race', 'Class', 'Background and Alignment', 'Ability Scores', 'Skill Selection', 'Review'];
     const targetIndex = steps.indexOf(targetStep);
 
+    if (targetIndex > 0) {
+        const nameInput = screen.queryByPlaceholderText(/character name/i);
+
+        if (nameInput && !nameInput.value) {
+            fireEvent.change(nameInput, { target: { value: 'Test Hero' } });
+        }
+    }
+
     for (let i = 0; i < targetIndex; i++) {
         fireEvent.click(screen.getByRole('button', { name: /next|review/i }));
         await waitFor(() => {
@@ -378,4 +386,32 @@ test('switching methods resets scores - Point Buy resets to all 8s', async () =>
         const strScore = screen.getByLabelText(/str score/i);
         expect(strScore.textContent).toBe('8');
     });
+});
+
+test('blocks next navigation when a required step is incomplete', async () => {
+    await renderWizard();
+
+    fireEvent.click(screen.getByRole('button', { name: /next/i }));
+
+    expect(screen.getByRole('tab', { name: /name/i })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('alert')).toHaveTextContent(/character name is required/i);
+});
+
+test('back navigation and tab jumps preserve wizard state', async () => {
+    await renderWizard();
+
+    fireEvent.change(screen.getByPlaceholderText(/character name/i), {
+        target: { value: 'Brim' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: /next/i }));
+    fireEvent.click(screen.getByRole('button', { name: /back/i }));
+
+    expect(screen.getByPlaceholderText(/character name/i)).toHaveValue('Brim');
+
+    fireEvent.click(screen.getByRole('tab', { name: /ability scores/i }));
+    fireEvent.click(screen.getByRole('button', { name: /point buy/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /name/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /ability scores/i }));
+
+    expect(screen.getByRole('button', { name: /point buy/i })).toHaveAttribute('aria-pressed', 'true');
 });

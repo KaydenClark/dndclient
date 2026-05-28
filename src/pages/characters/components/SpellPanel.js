@@ -28,7 +28,14 @@ function SpellGroup({ title, spells, emptyCopy }) {
 
 // Spell display: cantrips, prepared, and known lists plus the spell-slot
 // tracker. Read-only - spell selection happens in the Level-Up Studio.
-export default function SpellPanel({ cantrips, preparedSpells, knownSpells, spellSlots }) {
+export default function SpellPanel({
+    cantrips,
+    preparedSpells,
+    knownSpells,
+    spellSlots,
+    isSaving = false,
+    onSpellSlotChange
+}) {
     // Spell-slot levels only - the cantrips key is tracked separately.
     const slotEntries = Object.entries(spellSlots || {}).filter(([key]) => key !== 'cantrips');
 
@@ -45,12 +52,39 @@ export default function SpellPanel({ cantrips, preparedSpells, knownSpells, spel
                 <div className="detail-panel">
                     <h3>Spell Slots</h3>
                     <ul className="detail-list">
-                        {slotEntries.map(([key, slotData]) => (
-                            <li key={key}>
-                                <span>{key.replace('level_', 'Level ')}</span>
-                                <strong>{slotData.slotTotal - slotData.slotsExpended}/{slotData.slotTotal}</strong>
-                            </li>
-                        ))}
+                        {slotEntries.map(([key, slotData]) => {
+                            const total = Number(slotData.slotTotal) || 0;
+                            const expended = Number(slotData.slotsExpended) || 0;
+                            const remaining = Math.max(0, total - expended);
+                            const label = `${key.replace('level_', 'Level ')} spell slots`;
+
+                            return (
+                                <li key={key} role="group" aria-label={label}>
+                                    <span>{key.replace('level_', 'Level ')}</span>
+                                    <strong>{remaining}/{total}</strong>
+                                    {onSpellSlotChange ? (
+                                        <span className="slot-actions">
+                                            <button
+                                                type="button"
+                                                className="secondary-action"
+                                                disabled={isSaving || total === 0 || expended >= total}
+                                                onClick={() => onSpellSlotChange(key, expended + 1)}
+                                            >
+                                                Expend
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="secondary-action"
+                                                disabled={isSaving || expended === 0}
+                                                onClick={() => onSpellSlotChange(key, 0)}
+                                            >
+                                                Refresh
+                                            </button>
+                                        </span>
+                                    ) : null}
+                                </li>
+                            );
+                        })}
                     </ul>
                 </div>
             </div>
