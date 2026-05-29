@@ -1,6 +1,29 @@
 import React from 'react';
 
-import { ABILITY_ORDER, formatModifier, formatSkillLabel } from './characterFormatters';
+import { ABILITY_ORDER, formatModifier, formatSkillLabel, SKILL_ABILITIES } from './characterFormatters';
+
+function getSkillBreakdown(character, skill, bonus) {
+    const ability = SKILL_ABILITIES[skill];
+    const abilityMod = character.abilityMods?.[ability] ?? 0;
+    const classSkills = new Set(character.skillProficiencies || []);
+    const backgroundSkills = new Set(character.backgroundSkillProficiencies || []);
+    const proficiencyBonus = classSkills.has(skill) || backgroundSkills.has(skill)
+        ? character.proficiencyBonus || 0
+        : 0;
+    const otherBonus = bonus - abilityMod - proficiencyBonus;
+    const parts = [`${ability?.toUpperCase() || 'Ability'} ${formatModifier(abilityMod)}`];
+
+    if (proficiencyBonus) {
+        const source = backgroundSkills.has(skill) ? 'background proficiency' : 'class proficiency';
+        parts.push(`${source} ${formatModifier(proficiencyBonus)}`);
+    }
+
+    if (otherBonus) {
+        parts.push(`other ${formatModifier(otherBonus)}`);
+    }
+
+    return `${formatSkillLabel(skill)}: ${parts.join(' + ')} = ${formatModifier(bonus)}`;
+}
 
 // Read-only saving throws and the 18-skill list, rendered as a two-up pair.
 // Skill values come pre-derived from the backend (class + background + race
@@ -26,7 +49,13 @@ export default function SkillsAndSaves({ character }) {
                     {Object.entries(character.skillValues || {}).map(([skill, bonus]) => (
                         <li key={skill}>
                             <span>{formatSkillLabel(skill)}</span>
-                            <strong>{formatModifier(bonus)}</strong>
+                            <strong
+                                aria-label={getSkillBreakdown(character, skill, bonus)}
+                                className="skill-breakdown"
+                                title={getSkillBreakdown(character, skill, bonus)}
+                            >
+                                {formatModifier(bonus)}
+                            </strong>
                         </li>
                     ))}
                 </ul>
