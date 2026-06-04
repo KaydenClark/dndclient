@@ -16,7 +16,8 @@ const compendium = {
             skillChoiceRules: {
                 choose: 2,
                 options: ['arcana', 'history', 'investigation']
-            }
+            },
+            levelProgression: { 1: { featureIds: ['expertise'] } }
         },
         { id: 'fighter', name: 'Fighter' }
     ],
@@ -50,6 +51,7 @@ const baseEditForm = {
     shieldId: '',
     equippedWeaponIds: [],
     skillProficiencies: ['arcana'],
+    expertiseProficiencies: [],
     currency: { cp: 0, sp: 0, ep: 0, gp: 73, pp: 0 },
     traits: '',
     ideals: '',
@@ -81,6 +83,7 @@ function renderForm(overrides = {}) {
             onToggleWeapon={vi.fn()}
             onClassChange={vi.fn()}
             onToggleSkill={vi.fn()}
+            onToggleExpertise={vi.fn()}
             {...overrides}
         />
     );
@@ -212,6 +215,29 @@ describe('EditCharacterForm - skill selector', () => {
 
     test('shows arcana as checked (pre-selected skill)', () => {
         renderForm();
-        expect(screen.getByLabelText(/arcana/i)).toBeChecked();
+        const skillSection = screen.getByText(/skill proficiencies/i).closest('.weapon-picker');
+        expect(within(skillSection).getByLabelText(/arcana/i)).toBeChecked();
+    });
+});
+
+describe('EditCharacterForm - expertise selector', () => {
+    test('renders expertise selector when class features grant expertise', () => {
+        renderForm();
+        expect(screen.getByText(/expertise \(0\/2 chosen\)/i)).toBeInTheDocument();
+    });
+
+    test('expertise choices include class and background proficient skills', () => {
+        renderForm();
+        const expertiseSection = screen.getByText(/expertise \(0\/2 chosen\)/i).closest('.weapon-picker');
+        expect(within(expertiseSection).getByLabelText(/arcana/i)).toBeInTheDocument();
+        expect(within(expertiseSection).getByLabelText(/perception/i)).toBeInTheDocument();
+    });
+
+    test('expertise toggle calls onToggleExpertise with the skill id', () => {
+        const onToggleExpertise = vi.fn();
+        renderForm({ onToggleExpertise });
+        const expertiseSection = screen.getByText(/expertise \(0\/2 chosen\)/i).closest('.weapon-picker');
+        fireEvent.click(within(expertiseSection).getByLabelText(/arcana/i));
+        expect(onToggleExpertise).toHaveBeenCalledWith('arcana');
     });
 });

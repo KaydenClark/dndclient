@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { vi } from 'vitest';
 
 import CharacterNew from './CharacterNew';
-import { fetchCompendiumBootstrap } from '../../lib/api';
+import { createCharacter, fetchCompendiumBootstrap } from '../../lib/api';
 
 vi.mock('../../context/auth', () => ({
     useAuth: () => ({
@@ -125,6 +125,44 @@ test('guides character creation through the planned wizard steps before review',
     expect(screen.getByText(/proficiency summary/i)).toBeInTheDocument();
     expect(screen.getByText(/soldier/i)).toBeInTheDocument();
     expect(screen.getByText(/athletics/i)).toBeInTheDocument();
+});
+
+test('skill step supports expertise choices and submits them', async () => {
+    createCharacter.mockResolvedValue({ _id: 'created-character-id' });
+    await renderWizard({
+        races: [{ id: 'human', name: 'Human', raceGroup: 'Human' }],
+        classes: [{
+            id: 'rogue',
+            name: 'Rogue',
+            skillChoiceRules: { choose: 2, options: ['acrobatics', 'stealth', 'perception'] },
+            levelProgression: { 1: { featureIds: ['expertise'] } }
+        }],
+        subclasses: [],
+        backgrounds: [{ id: 'criminal', name: 'Criminal', skillProficiencies: ['deception', 'stealth'] }]
+    });
+
+    await advanceTo('Skill Selection');
+
+    fireEvent.click(screen.getByLabelText(/acrobatics/i));
+    const expertiseSection = screen.getByText(/expertise \(0\/2 chosen\)/i).closest('.weapon-picker');
+    fireEvent.click(within(expertiseSection).getByLabelText(/acrobatics/i));
+    fireEvent.click(within(expertiseSection).getByLabelText(/stealth/i));
+    fireEvent.click(screen.getByRole('button', { name: /review/i }));
+
+    expect(screen.getByText(/^expertise$/i)).toBeInTheDocument();
+    expect(screen.getByText(/acrobatics, stealth/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /create character/i }));
+
+    await waitFor(() => {
+        expect(createCharacter).toHaveBeenCalledWith(
+            'test-token',
+            expect.objectContaining({
+                skillProficiencies: ['acrobatics'],
+                expertiseProficiencies: ['acrobatics', 'stealth']
+            })
+        );
+    });
 });
 
 // ---------------------------------------------------------------------------

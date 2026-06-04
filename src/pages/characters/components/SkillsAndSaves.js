@@ -7,15 +7,21 @@ function getSkillBreakdown(character, skill, bonus) {
     const abilityMod = character.abilityMods?.[ability] ?? 0;
     const classSkills = new Set(character.skillProficiencies || []);
     const backgroundSkills = new Set(character.backgroundSkillProficiencies || []);
+    const expertiseSkills = new Set(character.expertiseProficiencies || []);
     const proficiencyBonus = classSkills.has(skill) || backgroundSkills.has(skill)
         ? character.proficiencyBonus || 0
         : 0;
-    const otherBonus = bonus - abilityMod - proficiencyBonus;
+    const expertiseBonus = expertiseSkills.has(skill) ? character.proficiencyBonus || 0 : 0;
+    const otherBonus = bonus - abilityMod - proficiencyBonus - expertiseBonus;
     const parts = [`${ability?.toUpperCase() || 'Ability'} ${formatModifier(abilityMod)}`];
 
     if (proficiencyBonus) {
         const source = backgroundSkills.has(skill) ? 'background proficiency' : 'class proficiency';
         parts.push(`${source} ${formatModifier(proficiencyBonus)}`);
+    }
+
+    if (expertiseBonus) {
+        parts.push(`expertise ${formatModifier(expertiseBonus)}`);
     }
 
     if (otherBonus) {

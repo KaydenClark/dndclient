@@ -9,6 +9,7 @@ const fullCharacter = {
     savingThrowProficiencies: ['int', 'wis'],
     skillProficiencies: ['arcana', 'history'],
     backgroundSkillProficiencies: ['perception'],
+    expertiseProficiencies: ['arcana'],
     weaponProficiencies: ['dagger', 'light-crossbow'],
     armorProficiencies: ['light', 'medium'],
     toolProficiencies: ['thieves-tools', 'herbalism-kit'],
@@ -55,6 +56,12 @@ describe('FeaturesPanel - proficiency lists', () => {
     test('renders background skill proficiencies as human-readable labels', () => {
         render(<FeaturesPanel character={fullCharacter} features={[]} />);
         expect(screen.getByText('Perception')).toBeInTheDocument();
+    });
+
+    test('renders expertise proficiencies as human-readable labels', () => {
+        render(<FeaturesPanel character={fullCharacter} features={[]} />);
+        expect(screen.getByText('Expertise')).toBeInTheDocument();
+        expect(screen.getByText('Arcana')).toBeInTheDocument();
     });
 
     test('renders weapon proficiencies as formatted slugs', () => {

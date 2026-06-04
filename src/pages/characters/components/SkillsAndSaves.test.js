@@ -9,6 +9,7 @@ const baseCharacter = {
     proficiencyBonus: 3,
     skillProficiencies: ['arcana'],
     backgroundSkillProficiencies: ['perception'],
+    expertiseProficiencies: [],
     savingThrows: { str: -1, dex: 3, con: 2, int: 5, wis: 4, cha: 0 },
     skillValues: {
         acrobatics: 3,
@@ -72,6 +73,19 @@ describe('SkillsAndSaves', () => {
     test('shows unproficient skills as ability modifier only', () => {
         render(<SkillsAndSaves character={baseCharacter} />);
         expect(screen.getByLabelText('Stealth: DEX +3 = +3')).toBeInTheDocument();
+    });
+
+    test('explains expertise separately in the skill bonus tooltip', () => {
+        render(
+            <SkillsAndSaves
+                character={{
+                    ...baseCharacter,
+                    expertiseProficiencies: ['arcana'],
+                    skillValues: { ...baseCharacter.skillValues, arcana: 10 }
+                }}
+            />
+        );
+        expect(screen.getByLabelText('Arcana: INT +4 + class proficiency +3 + expertise +3 = +10')).toBeInTheDocument();
     });
 
     test('renders nothing in the skills list when skillValues is empty', () => {

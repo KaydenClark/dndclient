@@ -33,11 +33,17 @@ export default function SpellPanel({
     preparedSpells,
     knownSpells,
     spellSlots,
+    spellcasting,
     isSaving = false,
     onSpellSlotChange
 }) {
     // Spell-slot levels only - the cantrips key is tracked separately.
     const slotEntries = Object.entries(spellSlots || {}).filter(([key]) => key !== 'cantrips');
+    const restRecovery = spellcasting?.restRecovery;
+    const recoveryLabel =
+        restRecovery === 'short' || restRecovery === 'long'
+            ? `${restRecovery} rest`
+            : '';
 
     return (
         <>
@@ -51,6 +57,9 @@ export default function SpellPanel({
 
                 <div className="detail-panel">
                     <h3>Spell Slots</h3>
+                    {recoveryLabel ? (
+                        <p className="status-copy">Recovers on: {recoveryLabel}</p>
+                    ) : null}
                     <ul className="detail-list">
                         {slotEntries.map(([key, slotData]) => {
                             const total = Number(slotData.slotTotal) || 0;

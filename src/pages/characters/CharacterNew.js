@@ -3,9 +3,16 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../context/auth';
 import { createCharacter, fetchCompendiumBootstrap } from '../../lib/api';
-import { ABILITY_ORDER, formatSkillLabel } from './components/characterFormatters';
+import {
+    ABILITY_ORDER,
+    collectLevelFeatureIds,
+    formatSkillLabel,
+    getExpertiseChoiceLimit,
+    unique
+} from './components/characterFormatters';
 import BackgroundField from './components/BackgroundField';
 import { ALIGNMENTS } from './components/characterConstants';
+import ExpertiseSelector from './components/ExpertiseSelector';
 import SkillSelector from './components/SkillSelector';
 
 // Wizard step definitions - order matters, index is the step number.
@@ -71,7 +78,8 @@ const initialForm = {
     level: 1,
     scoreMethod: SCORE_METHODS.STANDARD,
     baseAbilityScores: { ...STANDARD_ARRAY },
-    skillProficiencies: []
+    skillProficiencies: [],
+    expertiseProficiencies: []
 };
 
 // Pre-fills race, class, subclass, and background from the first available
@@ -188,19 +196,35 @@ export default function CharacterNew() {
             ...prev,
             classId: nextClassId,
             subclassId: nextSubclasses[0]?.id || '',
-            skillProficiencies: []
+            skillProficiencies: [],
+            expertiseProficiencies: []
         }));
     }
 
     function toggleSkill(skill) {
         setForm((prev) => {
             const isSelected = prev.skillProficiencies.includes(skill);
+            const skillProficiencies = isSelected
+                ? prev.skillProficiencies.filter((s) => s !== skill)
+                : [...prev.skillProficiencies, skill];
 
             return {
                 ...prev,
-                skillProficiencies: isSelected
-                    ? prev.skillProficiencies.filter((s) => s !== skill)
-                    : [...prev.skillProficiencies, skill]
+                skillProficiencies,
+                expertiseProficiencies: prev.expertiseProficiencies.filter((s) => skillProficiencies.includes(s))
+            };
+        });
+    }
+
+    function toggleExpertise(skill) {
+        setForm((prev) => {
+            const isSelected = prev.expertiseProficiencies.includes(skill);
+
+            return {
+                ...prev,
+                expertiseProficiencies: isSelected
+                    ? prev.expertiseProficiencies.filter((s) => s !== skill)
+                    : [...prev.expertiseProficiencies, skill]
             };
         });
     }
@@ -311,7 +335,8 @@ export default function CharacterNew() {
                 baseAbilityScores: Object.fromEntries(
                     Object.entries(form.baseAbilityScores).map(([k, v]) => [k, Number(v) || 0])
                 ),
-                skillProficiencies: form.skillProficiencies
+                skillProficiencies: form.skillProficiencies,
+                expertiseProficiencies: form.expertiseProficiencies
             });
 
             // Drop into level-up mode so the player picks spells immediately.
@@ -348,6 +373,9 @@ export default function CharacterNew() {
     // Background-granted skills lock those slots in the SkillSelector so
     // the player does not waste a class pick on a skill they already have.
     const backgroundGrantedSkills = selectedBackground?.skillProficiencies || [];
+    const classFeatureIds = collectLevelFeatureIds(selectedClass?.levelProgression, form.level);
+    const expertiseChoiceLimit = getExpertiseChoiceLimit(classFeatureIds);
+    const expertiseAvailableSkills = unique([...form.skillProficiencies, ...backgroundGrantedSkills]);
 
     const isLastContentStep = step === STEP_SKILLS;
     const isReview = step === STEP_REVIEW;
@@ -616,12 +644,20 @@ export default function CharacterNew() {
 
             case STEP_SKILLS:
                 return (
-                    <SkillSelector
-                        skillChoiceRules={selectedClass?.skillChoiceRules}
-                        selectedSkills={form.skillProficiencies}
-                        grantedSkills={backgroundGrantedSkills}
-                        onToggle={toggleSkill}
-                    />
+                    <>
+                        <SkillSelector
+                            skillChoiceRules={selectedClass?.skillChoiceRules}
+                            selectedSkills={form.skillProficiencies}
+                            grantedSkills={backgroundGrantedSkills}
+                            onToggle={toggleSkill}
+                        />
+                        <ExpertiseSelector
+                            availableSkills={expertiseAvailableSkills}
+                            selectedSkills={form.expertiseProficiencies}
+                            maxChoices={expertiseChoiceLimit}
+                            onToggle={toggleExpertise}
+                        />
+                    </>
                 );
 
             case STEP_REVIEW:
@@ -661,6 +697,14 @@ export default function CharacterNew() {
                                     <span>Class Skills</span>
                                     <strong>
                                         {form.skillProficiencies.map(formatSkillLabel).join(', ')}
+                                    </strong>
+                                </li>
+                            ) : null}
+                            {form.expertiseProficiencies.length > 0 ? (
+                                <li>
+                                    <span>Expertise</span>
+                                    <strong>
+                                        {form.expertiseProficiencies.map(formatSkillLabel).join(', ')}
                                     </strong>
                                 </li>
                             ) : null}

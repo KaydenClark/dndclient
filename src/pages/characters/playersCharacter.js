@@ -52,6 +52,7 @@ function syncEditForm(character) {
         shieldId: character?.shieldId || '',
         equippedWeaponIds: character?.equippedWeaponIds || [],
         skillProficiencies: character?.skillProficiencies || [],
+        expertiseProficiencies: character?.expertiseProficiencies || [],
         currency: {
             cp: character?.currency?.cp ?? 0,
             sp: character?.currency?.sp ?? 0,
@@ -252,12 +253,29 @@ export default function PlayersCharacter() {
     function toggleEditSkill(skill) {
         setEditForm((currentForm) => {
             const isSelected = currentForm.skillProficiencies.includes(skill);
+            const skillProficiencies = isSelected
+                ? currentForm.skillProficiencies.filter((value) => value !== skill)
+                : [...currentForm.skillProficiencies, skill];
 
             return {
                 ...currentForm,
-                skillProficiencies: isSelected
-                    ? currentForm.skillProficiencies.filter((value) => value !== skill)
-                    : [...currentForm.skillProficiencies, skill]
+                skillProficiencies,
+                expertiseProficiencies: currentForm.expertiseProficiencies.filter((value) =>
+                    skillProficiencies.includes(value) || character.backgroundSkillProficiencies?.includes(value)
+                )
+            };
+        });
+    }
+
+    function toggleEditExpertise(skill) {
+        setEditForm((currentForm) => {
+            const isSelected = currentForm.expertiseProficiencies.includes(skill);
+
+            return {
+                ...currentForm,
+                expertiseProficiencies: isSelected
+                    ? currentForm.expertiseProficiencies.filter((value) => value !== skill)
+                    : [...currentForm.expertiseProficiencies, skill]
             };
         });
     }
@@ -299,6 +317,7 @@ export default function PlayersCharacter() {
                     Object.entries(editForm.baseAbilityScores).map(([ability, value]) => [ability, Number(value) || 0])
                 ),
                 skillProficiencies: editForm.skillProficiencies,
+                expertiseProficiencies: editForm.expertiseProficiencies,
                 currentHp: toNumberOrUndefined(editForm.currentHp),
                 tempHp: toNumberOrUndefined(editForm.tempHp) || 0,
                 armorId: editForm.armorId || null,
@@ -519,6 +538,7 @@ export default function PlayersCharacter() {
                     onToggleWeapon={toggleEquippedWeapon}
                     onClassChange={changeEditClass}
                     onToggleSkill={toggleEditSkill}
+                    onToggleExpertise={toggleEditExpertise}
                 />
             ) : null}
 
@@ -553,6 +573,7 @@ export default function PlayersCharacter() {
                 preparedSpells={preparedSpells}
                 knownSpells={knownSpells}
                 spellSlots={character.spellSlots}
+                spellcasting={character.spellcasting}
                 isSaving={isSaving}
                 onSpellSlotChange={handleSpellSlotChange}
             />

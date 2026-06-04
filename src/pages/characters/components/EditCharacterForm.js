@@ -1,8 +1,16 @@
 import React from 'react';
 
-import { ABILITY_ORDER, CURRENCY_ORDER, formatSlug } from './characterFormatters';
+import {
+    ABILITY_ORDER,
+    collectLevelFeatureIds,
+    CURRENCY_ORDER,
+    formatSlug,
+    getExpertiseChoiceLimit,
+    unique
+} from './characterFormatters';
 import BackgroundField from './BackgroundField';
 import { ALIGNMENTS } from './characterConstants';
+import ExpertiseSelector from './ExpertiseSelector';
 import SkillSelector from './SkillSelector';
 
 // Full edit form for the character sheet. All state lives in the page
@@ -24,10 +32,17 @@ export default function EditCharacterForm({
     onCurrencyChange,
     onToggleWeapon,
     onClassChange,
-    onToggleSkill
+    onToggleSkill,
+    onToggleExpertise
 }) {
     // The class document drives the available skill choices (skillChoiceRules).
     const selectedClass = compendium.classes.find((classDoc) => classDoc.id === editForm.classId);
+    const classFeatureIds = collectLevelFeatureIds(selectedClass?.levelProgression, editForm.level);
+    const expertiseChoiceLimit = getExpertiseChoiceLimit(classFeatureIds);
+    const expertiseAvailableSkills = unique([
+        ...(editForm.skillProficiencies || []),
+        ...(character.backgroundSkillProficiencies || [])
+    ]);
     // A weapon is proficient when the derived availableWeaponIds list includes
     // it - that list already accounts for race + class + character overrides.
     const proficientWeaponIds = character.availableWeaponIds || [];
@@ -195,6 +210,12 @@ export default function EditCharacterForm({
                     selectedSkills={editForm.skillProficiencies}
                     grantedSkills={character.backgroundSkillProficiencies || []}
                     onToggle={onToggleSkill}
+                />
+                <ExpertiseSelector
+                    availableSkills={expertiseAvailableSkills}
+                    selectedSkills={editForm.expertiseProficiencies}
+                    maxChoices={expertiseChoiceLimit}
+                    onToggle={onToggleExpertise}
                 />
 
                 {['traits', 'ideals', 'bonds', 'flaws', 'backstory'].map((field) => (
