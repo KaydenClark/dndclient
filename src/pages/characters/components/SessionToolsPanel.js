@@ -47,13 +47,32 @@ export default function SessionToolsPanel({
                             <label key={condition.id} className="spell-selector-card">
                                 <input
                                     type="checkbox"
+                                    aria-label={condition.name}
                                     checked={activeConditions.includes(condition.id)}
                                     disabled={isSaving}
                                     onChange={() => onToggleCondition(condition.id)}
                                 />
                                 <span className="spell-selector-copy">
-                                    <strong>{condition.name}</strong>
-                                    <small>{condition.description}</small>
+                                    <span className="condition-name-row">
+                                        <strong>{condition.name}</strong>
+                                        <span
+                                            className="condition-tooltip-anchor"
+                                            role="img"
+                                            aria-label="Condition details"
+                                            tabIndex={0}
+                                            title={condition.description}
+                                            data-tooltip={condition.description}
+                                            onClick={(event) => {
+                                                event.preventDefault();
+                                                event.stopPropagation();
+                                            }}
+                                            onKeyDown={(event) => {
+                                                event.stopPropagation();
+                                            }}
+                                        >
+                                            i
+                                        </span>
+                                    </span>
                                 </span>
                             </label>
                         ))}

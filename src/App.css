@@ -4,7 +4,7 @@
 
 .page-shell {
     margin: 0 auto;
-    max-width: 960px;
+    max-width: 1100px;
     padding: 2rem 1.25rem 4rem;
 }
 
@@ -24,7 +24,7 @@
 .character-detail-card,
 .form-card {
     margin: 2rem auto 0;
-    max-width: 720px;
+    max-width: 100%;
 }
 
 .eyebrow {
@@ -411,6 +411,62 @@
     display: flex;
     flex-direction: column;
     gap: 0.2rem;
+}
+
+/* Condition name row: name + info icon inline */
+.condition-name-row {
+    align-items: center;
+    display: flex;
+    gap: 0.4rem;
+}
+
+/* Info icon that triggers the tooltip */
+.condition-tooltip-anchor {
+    color: #8891aa;
+    cursor: default;
+    font-size: 0.7rem;
+    font-style: normal;
+    line-height: 1;
+    position: relative;
+    user-select: none;
+}
+
+.condition-tooltip-anchor:hover {
+    color: #c7c9d3;
+}
+
+.condition-tooltip-anchor:focus-visible {
+    color: #ffffff;
+    outline: 2px solid #7dd3fc;
+    outline-offset: 2px;
+}
+
+/* Tooltip bubble shown on hover */
+.condition-tooltip-anchor::after {
+    background: #1a2035;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    bottom: calc(100% + 8px);
+    color: #c7c9d3;
+    content: attr(data-tooltip);
+    font-size: 0.78rem;
+    left: 50%;
+    line-height: 1.45;
+    max-width: 260px;
+    opacity: 0;
+    padding: 0.5rem 0.7rem;
+    pointer-events: none;
+    position: absolute;
+    transform: translateX(-50%);
+    transition: opacity 0.15s ease;
+    white-space: normal;
+    width: max-content;
+    z-index: 100;
+}
+
+.condition-tooltip-anchor:hover::after,
+.condition-tooltip-anchor:focus-visible::after {
+    opacity: 1;
 }
 
 .slot-actions,
