@@ -8,10 +8,12 @@ import {
     CURRENCY_ORDER,
     SKILL_ABILITIES,
     clampLevel,
+    collectLevelFeatureIds,
     formatModifier,
     formatRange,
     formatSkillLabel,
     formatSlug,
+    getExpertiseChoiceLimit,
     sortSpells,
     unique
 } from './characterFormatters';
@@ -281,6 +283,44 @@ describe('unique', () => {
         const input = ['a', 'a', 'b'];
         unique(input);
         expect(input).toEqual(['a', 'a', 'b']);
+    });
+});
+
+describe('collectLevelFeatureIds', () => {
+    test('collects feature ids up to the current level', () => {
+        const progression = {
+            1: { featureIds: ['expertise'] },
+            3: { featureIds: ['roguish-archetype'] },
+            5: { featureIds: ['uncanny-dodge'] }
+        };
+
+        expect(collectLevelFeatureIds(progression, 3)).toEqual(['expertise', 'roguish-archetype']);
+    });
+
+    test('supports array-style progression entries', () => {
+        expect(collectLevelFeatureIds({ 1: ['expertise'] }, 1)).toEqual(['expertise']);
+    });
+
+    test('returns empty array when progression is missing', () => {
+        expect(collectLevelFeatureIds(null, 1)).toEqual([]);
+    });
+});
+
+describe('getExpertiseChoiceLimit', () => {
+    test('returns 2 for Rogue Expertise', () => {
+        expect(getExpertiseChoiceLimit(['expertise'])).toBe(2);
+    });
+
+    test('adds Bard expertise grants together', () => {
+        expect(getExpertiseChoiceLimit(['bard-expertise', 'bard-expertise-2'])).toBe(4);
+    });
+
+    test('returns 1 for Ranger expertise', () => {
+        expect(getExpertiseChoiceLimit(['ranger-expertise'])).toBe(1);
+    });
+
+    test('returns 0 when no expertise feature is present', () => {
+        expect(getExpertiseChoiceLimit(['second-wind'])).toBe(0);
     });
 });
 

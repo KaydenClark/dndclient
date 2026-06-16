@@ -15,8 +15,10 @@ export default function FeaturesPanel({ character, features }) {
                     <li><span>Saving Throws</span><strong>{(character.savingThrowProficiencies || []).map((value) => value.toUpperCase()).join(', ') || 'None'}</strong></li>
                     <li><span>Skills</span><strong>{(character.skillProficiencies || []).map(formatSkillLabel).join(', ') || 'None'}</strong></li>
                     <li><span>Background Skills</span><strong>{(character.backgroundSkillProficiencies || []).map(formatSkillLabel).join(', ') || 'None'}</strong></li>
+                    <li><span>Expertise</span><strong>{(character.expertiseProficiencies || []).map(formatSkillLabel).join(', ') || 'None'}</strong></li>
                     <li><span>Weapons</span><strong>{(character.weaponProficiencies || []).map(formatSlug).join(', ') || 'None'}</strong></li>
                     <li><span>Armor</span><strong>{(character.armorProficiencies || []).map(formatSlug).join(', ') || 'None'}</strong></li>
+                    <li><span>Tools</span><strong>{(character.toolProficiencies || []).map(formatSlug).join(', ') || 'None'}</strong></li>
                 </ul>
                 <div className="tag-list">
                     {features.map((feature) => (

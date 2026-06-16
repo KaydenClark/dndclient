@@ -19,6 +19,7 @@ const jsJsxPlugin = {
 
 export default defineConfig({
     plugins: [jsJsxPlugin, react()],
+    server: { host: true }, // expose to local network so phones can connect
     test: {
         environment: 'jsdom',
         environmentOptions: {

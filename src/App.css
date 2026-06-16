@@ -873,3 +873,134 @@ input[type="checkbox"]:disabled {
         flex-wrap: wrap;
     }
 }
+
+/* ── Merged from Game_Plan_CC: feature component styles ──
+   HP bar, skill-modifier tooltips, condition tooltips, session/slot
+   forms, and the spell filter. Colors adapted to the design tokens. */
+
+/* Skill modifier breakdown — hover affordance */
+.skill-breakdown {
+    cursor: help;
+}
+
+/* HP bar: progress indicator on the HP stat tile. Color thresholds:
+   ok = >=50% (green), low = <50% (yellow), critical = <25% (red). */
+.hp-bar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    height: 6px;
+    margin-top: 6px;
+    overflow: hidden;
+    width: 100%;
+}
+
+.hp-bar-fill {
+    border-radius: 4px;
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.hp-bar-ok       { background: #4caf6e; }
+.hp-bar-low      { background: #e0a020; }
+.hp-bar-critical { background: #d94040; }
+
+/* Spell selector checkbox alignment */
+.spell-selector-card input {
+    margin-top: 0.2rem;
+}
+
+/* Condition name row: name + info icon inline */
+.condition-name-row {
+    align-items: center;
+    display: flex;
+    gap: 0.4rem;
+}
+
+/* Info icon that triggers the tooltip */
+.condition-tooltip-anchor {
+    color: var(--clr-text-muted);
+    cursor: default;
+    font-size: 0.7rem;
+    font-style: normal;
+    line-height: 1;
+    position: relative;
+    user-select: none;
+}
+
+.condition-tooltip-anchor:hover {
+    color: var(--clr-text-secondary);
+}
+
+.condition-tooltip-anchor:focus-visible {
+    color: #ffffff;
+    outline: 2px solid var(--clr-cyan);
+    outline-offset: 2px;
+}
+
+/* Tooltip bubble shown on hover */
+.condition-tooltip-anchor::after {
+    background: var(--clr-surface-2);
+    border: 1px solid var(--clr-border-accent);
+    border-radius: var(--radius-md);
+    bottom: calc(100% + 8px);
+    color: var(--clr-text-secondary);
+    content: attr(data-tooltip);
+    font-size: 0.78rem;
+    left: 50%;
+    line-height: 1.45;
+    max-width: 260px;
+    opacity: 0;
+    padding: 0.5rem 0.7rem;
+    pointer-events: none;
+    position: absolute;
+    transform: translateX(-50%);
+    transition: opacity 0.15s ease;
+    white-space: normal;
+    width: max-content;
+    z-index: 100;
+}
+
+.condition-tooltip-anchor:hover::after,
+.condition-tooltip-anchor:focus-visible::after {
+    opacity: 1;
+}
+
+/* Slot actions & session inline form */
+.slot-actions,
+.session-inline-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.session-inline-form {
+    align-items: flex-end;
+    margin-top: 1rem;
+}
+
+.session-inline-form label {
+    flex: 1 1 130px;
+}
+
+.session-inline-form input,
+.spell-filter-input {
+    background: rgba(6, 10, 22, 0.72);
+    border: 1px solid rgba(139, 92, 246, 0.22);
+    border-radius: var(--radius-md);
+    color: var(--clr-text-primary);
+    min-height: 44px;
+    outline: none;
+    padding: 0 0.9rem;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    width: 100%;
+}
+
+.session-inline-form input:focus,
+.spell-filter-input:focus {
+    border-color: rgba(34, 211, 238, 0.55);
+    box-shadow: 0 0 14px rgba(34, 211, 238, 0.14);
+}
+
+.spell-filter-input {
+    margin-bottom: 0.85rem;
+}

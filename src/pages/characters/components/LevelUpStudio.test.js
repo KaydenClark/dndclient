@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, test, vi } from 'vitest';
 
 import LevelUpStudio from './LevelUpStudio';
@@ -184,6 +184,63 @@ describe('LevelUpStudio - spell selection (spellcasting class)', () => {
         expect(
             screen.getByText(/no spells available for this list/i)
         ).toBeInTheDocument();
+    });
+
+    test('filters long spell lists by name', () => {
+        const longSpellList = [
+            { id: 'alarm', name: 'Alarm', level: 1 },
+            { id: 'burning-hands', name: 'Burning Hands', level: 1 },
+            { id: 'charm-person', name: 'Charm Person', level: 1 },
+            { id: 'detect-magic', name: 'Detect Magic', level: 1 },
+            { id: 'feather-fall', name: 'Feather Fall', level: 1 },
+            { id: 'fog-cloud', name: 'Fog Cloud', level: 1 },
+            { id: 'grease', name: 'Grease', level: 1 },
+            { id: 'identify', name: 'Identify', level: 1 },
+            { id: 'shield', name: 'Shield', level: 1 }
+        ];
+
+        renderStudio({ leveledSpellOptions: longSpellList });
+
+        fireEvent.change(screen.getByLabelText(/filter known spells/i), {
+            target: { value: 'shield' }
+        });
+
+        const knownGroup = screen.getByText(/known spells remain available for preparation/i).closest('.levelup-spell-group');
+
+        expect(within(knownGroup).getByLabelText(/shield/i)).toBeInTheDocument();
+        expect(within(knownGroup).queryByLabelText(/alarm/i)).not.toBeInTheDocument();
+    });
+});
+
+describe('LevelUpStudio - subclass unlock notice', () => {
+    test('shows notice when planner level is below subclassLevel', () => {
+        renderStudio({ planner: { ...basePlanner, level: 2 }, subclassLevel: 3 });
+        expect(screen.getByText(/subclass unlocks at level 3/i)).toBeInTheDocument();
+    });
+
+    test('notice contains the correct unlock level', () => {
+        renderStudio({ planner: { ...basePlanner, level: 1 }, subclassLevel: 2 });
+        expect(screen.getByText(/subclass unlocks at level 2/i)).toBeInTheDocument();
+    });
+
+    test('no notice when planner level equals subclassLevel', () => {
+        renderStudio({ planner: { ...basePlanner, level: 3 }, subclassLevel: 3 });
+        expect(screen.queryByText(/subclass unlocks/i)).not.toBeInTheDocument();
+    });
+
+    test('no notice when planner level is above subclassLevel', () => {
+        renderStudio({ planner: { ...basePlanner, level: 5 }, subclassLevel: 3 });
+        expect(screen.queryByText(/subclass unlocks/i)).not.toBeInTheDocument();
+    });
+
+    test('no notice when subclassLevel is not provided', () => {
+        renderStudio({ planner: { ...basePlanner, level: 1 } });
+        expect(screen.queryByText(/subclass unlocks/i)).not.toBeInTheDocument();
+    });
+
+    test('no notice when subclassLevel is null', () => {
+        renderStudio({ planner: { ...basePlanner, level: 1 }, subclassLevel: null });
+        expect(screen.queryByText(/subclass unlocks/i)).not.toBeInTheDocument();
     });
 });
 

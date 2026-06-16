@@ -1,19 +1,38 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import { formatModifier } from './characterFormatters';
 
 // One checkbox group for the spell planner (cantrips / known / prepared).
 function SpellSelectionGroup({ title, description, options, selectedIds, onToggle }) {
+    const [query, setQuery] = useState('');
+    const normalizedQuery = query.trim().toLowerCase();
+    const filteredOptions = normalizedQuery
+        ? options.filter((spell) => spell.name.toLowerCase().includes(normalizedQuery))
+        : options;
+
     return (
         <div className="levelup-spell-group">
             <div className="levelup-group-header">
                 <strong>{title}</strong>
                 <span>{description}</span>
             </div>
+            {options.length > 8 ? (
+                <input
+                    type="search"
+                    className="spell-filter-input"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder={`Filter ${title.toLowerCase()}`}
+                    aria-label={`Filter ${title}`}
+                />
+            ) : null}
             {options.length === 0 ? <p className="status-copy">No spells available for this list.</p> : null}
+            {options.length > 0 && filteredOptions.length === 0 ? (
+                <p className="status-copy">No spells match that filter.</p>
+            ) : null}
             {options.length > 0 ? (
                 <div className="spell-selector-list">
-                    {options.map((spell) => (
+                    {filteredOptions.map((spell) => (
                         <label key={spell.id} className="spell-selector-card">
                             <input
                                 type="checkbox"
@@ -35,6 +54,8 @@ function SpellSelectionGroup({ title, description, options, selectedIds, onToggl
 // Level-Up Studio: adjust level 1-20 and update spell picks, then save to
 // re-derive the sheet. The planner state lives in the page component; this
 // component renders it and reports changes through callbacks.
+// subclassLevel: the level at which this class unlocks its subclass (from class data).
+// When planner.level is below that threshold, we show a notice instead of nothing.
 export default function LevelUpStudio({
     planner,
     character,
@@ -45,8 +66,15 @@ export default function LevelUpStudio({
     onReset,
     onCancel,
     onSave,
-    onToggleSpell
+    onToggleSpell,
+    subclassLevel
 }) {
+    // Show a notice when the character hasn't reached the subclass unlock level.
+    // subclassLevel=null/undefined means the class has no subclass data yet - skip notice.
+    const subclassUnlockNotice =
+        subclassLevel && planner.level < subclassLevel
+            ? `Subclass unlocks at level ${subclassLevel}.`
+            : null;
     return (
         <div className="detail-panel levelup-panel">
             <div className="section-heading">
@@ -105,6 +133,13 @@ export default function LevelUpStudio({
                     <strong>HP {character.currentHp}/{character.maxHp}</strong>
                     <small>Proficiency {formatModifier(character.proficiencyBonus)} | Spell DC {character.spellSaveDC ?? '--'}</small>
                 </div>
+
+                {subclassUnlockNotice ? (
+                    <div className="levelup-summary-card" aria-label="Subclass unlock notice">
+                        <span className="detail-label">Subclass</span>
+                        <small>{subclassUnlockNotice}</small>
+                    </div>
+                ) : null}
             </div>
 
             {character.spellcasting?.ability ? (

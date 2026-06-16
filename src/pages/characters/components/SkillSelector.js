@@ -21,9 +21,7 @@ export default function SkillSelector({
         return (
             <div className="weapon-picker">
                 <span className="detail-label">Skill Proficiencies</span>
-                <p className="status-copy">
-                    No class skill choices available. Pick a class first, or re-seed the compendium.
-                </p>
+                <p className="status-copy">No skill choices for this class.</p>
             </div>
         );
     }

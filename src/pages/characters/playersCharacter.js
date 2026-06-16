@@ -14,6 +14,7 @@ import SpellPanel from './components/SpellPanel';
 import FeaturesPanel from './components/FeaturesPanel';
 import EditCharacterForm from './components/EditCharacterForm';
 import LevelUpStudio from './components/LevelUpStudio';
+import SessionToolsPanel from './components/SessionToolsPanel';
 
 // Builds the level-up planner snapshot from a character document.
 function syncPlanner(character) {
@@ -51,6 +52,7 @@ function syncEditForm(character) {
         shieldId: character?.shieldId || '',
         equippedWeaponIds: character?.equippedWeaponIds || [],
         skillProficiencies: character?.skillProficiencies || [],
+        expertiseProficiencies: character?.expertiseProficiencies || [],
         currency: {
             cp: character?.currency?.cp ?? 0,
             sp: character?.currency?.sp ?? 0,
@@ -89,7 +91,8 @@ export default function PlayersCharacter() {
         weapons: [],
         armor: [],
         spells: [],
-        backgrounds: []
+        backgrounds: [],
+        conditions: []
     });
     const [planner, setPlanner] = useState(syncPlanner(null));
     const [editForm, setEditForm] = useState(syncEditForm(null));
@@ -130,7 +133,8 @@ export default function PlayersCharacter() {
                         weapons: bootstrap.weapons || [],
                         armor: bootstrap.armor || [],
                         spells: bootstrap.spells || [],
-                        backgrounds: bootstrap.backgrounds || []
+                        backgrounds: bootstrap.backgrounds || [],
+                        conditions: bootstrap.conditions || []
                     });
                 }
             } catch (requestError) {
@@ -249,12 +253,29 @@ export default function PlayersCharacter() {
     function toggleEditSkill(skill) {
         setEditForm((currentForm) => {
             const isSelected = currentForm.skillProficiencies.includes(skill);
+            const skillProficiencies = isSelected
+                ? currentForm.skillProficiencies.filter((value) => value !== skill)
+                : [...currentForm.skillProficiencies, skill];
 
             return {
                 ...currentForm,
-                skillProficiencies: isSelected
-                    ? currentForm.skillProficiencies.filter((value) => value !== skill)
-                    : [...currentForm.skillProficiencies, skill]
+                skillProficiencies,
+                expertiseProficiencies: currentForm.expertiseProficiencies.filter((value) =>
+                    skillProficiencies.includes(value) || character.backgroundSkillProficiencies?.includes(value)
+                )
+            };
+        });
+    }
+
+    function toggleEditExpertise(skill) {
+        setEditForm((currentForm) => {
+            const isSelected = currentForm.expertiseProficiencies.includes(skill);
+
+            return {
+                ...currentForm,
+                expertiseProficiencies: isSelected
+                    ? currentForm.expertiseProficiencies.filter((value) => value !== skill)
+                    : [...currentForm.expertiseProficiencies, skill]
             };
         });
     }
@@ -296,6 +317,7 @@ export default function PlayersCharacter() {
                     Object.entries(editForm.baseAbilityScores).map(([ability, value]) => [ability, Number(value) || 0])
                 ),
                 skillProficiencies: editForm.skillProficiencies,
+                expertiseProficiencies: editForm.expertiseProficiencies,
                 currentHp: toNumberOrUndefined(editForm.currentHp),
                 tempHp: toNumberOrUndefined(editForm.tempHp) || 0,
                 armorId: editForm.armorId || null,
@@ -348,6 +370,26 @@ export default function PlayersCharacter() {
         }
     }
 
+    // Phase 8: Temp HP quick control. Persists tempHp without opening edit mode.
+    async function handleTempHpChange(nextTempHp) {
+        setIsSaving(true);
+        setError('');
+        setSaveMessage('');
+
+        try {
+            const nextCharacter = await updateCharacter(token, characterId, { tempHp: nextTempHp });
+
+            setCharacter(nextCharacter);
+            setPlanner(syncPlanner(nextCharacter));
+            setEditForm(syncEditForm(nextCharacter));
+            setSaveMessage('Temp HP updated.');
+        } catch (requestError) {
+            setError(requestError.response?.data?.error || 'Unable to update temp HP.');
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
     // Phase 1: HP quick control. Persists currentHp without opening edit mode.
     async function handleHpChange(nextHp) {
         setIsSaving(true);
@@ -366,6 +408,58 @@ export default function PlayersCharacter() {
         } finally {
             setIsSaving(false);
         }
+    }
+
+    async function saveSessionPatch(payload, message) {
+        setIsSaving(true);
+        setError('');
+        setSaveMessage('');
+
+        try {
+            const nextCharacter = await updateCharacter(token, characterId, payload);
+
+            setCharacter(nextCharacter);
+            setPlanner(syncPlanner(nextCharacter));
+            setEditForm(syncEditForm(nextCharacter));
+            setSaveMessage(message);
+        } catch (requestError) {
+            setError(requestError.response?.data?.error || 'Unable to update session tracker.');
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
+    function handleSpellSlotChange(slotKey, slotsExpended) {
+        saveSessionPatch({
+            spellSlots: {
+                ...(character.spellSlots || {}),
+                [slotKey]: {
+                    ...(character.spellSlots?.[slotKey] || {}),
+                    slotsExpended
+                }
+            }
+        }, 'Spell slots updated.');
+    }
+
+    function handleConditionToggle(conditionId) {
+        const activeConditions = character.conditions || [];
+        const nextConditions = activeConditions.includes(conditionId)
+            ? activeConditions.filter((value) => value !== conditionId)
+            : [...activeConditions, conditionId];
+
+        saveSessionPatch({ conditions: nextConditions }, 'Conditions updated.');
+    }
+
+    function handleDeathSaveChange(deathSaves) {
+        saveSessionPatch({ deathSaves }, 'Death saves updated.');
+    }
+
+    function handleHitDiceChange(hitDiceRemaining) {
+        saveSessionPatch({ hitDiceRemaining }, 'Hit dice updated.');
+    }
+
+    function handleInventoryChange(inventory) {
+        saveSessionPatch({ inventory }, 'Inventory updated.');
     }
 
     if (isLoading) {
@@ -401,6 +495,9 @@ export default function PlayersCharacter() {
     const leveledSpellOptions = availableSpells.filter((spell) => spell.level > 0);
     const subclassOptions = compendium.subclasses.filter((subclass) => subclass.classId === editForm.classId);
     const armorOptions = compendium.armor.filter((armor) => armor.category !== 'shield');
+    // Subclass unlock level for the current character's class - drives the notice in LevelUpStudio.
+    const activeClassData = (compendium.classes || []).find((c) => c.id === character.classId);
+    const activeSubclassLevel = activeClassData?.subclassLevel ?? null;
     const shieldOptions = compendium.armor.filter((armor) => armor.category === 'shield');
 
     return (
@@ -420,6 +517,7 @@ export default function PlayersCharacter() {
                 character={character}
                 showHpControls={mode === 'view'}
                 onHpChange={handleHpChange}
+                onTempHpChange={handleTempHpChange}
                 isSaving={isSaving}
             />
 
@@ -440,6 +538,7 @@ export default function PlayersCharacter() {
                     onToggleWeapon={toggleEquippedWeapon}
                     onClassChange={changeEditClass}
                     onToggleSkill={toggleEditSkill}
+                    onToggleExpertise={toggleEditExpertise}
                 />
             ) : null}
 
@@ -455,8 +554,10 @@ export default function PlayersCharacter() {
                     onCancel={closeActiveMode}
                     onSave={handleSaveLevelUp}
                     onToggleSpell={toggleSelection}
+                    subclassLevel={activeSubclassLevel}
                 />
             ) : null}
+
 
             <AbilityScores character={character} />
 
@@ -472,7 +573,22 @@ export default function PlayersCharacter() {
                 preparedSpells={preparedSpells}
                 knownSpells={knownSpells}
                 spellSlots={character.spellSlots}
+                spellcasting={character.spellcasting}
+                isSaving={isSaving}
+                onSpellSlotChange={handleSpellSlotChange}
             />
+
+            {mode === 'view' ? (
+                <SessionToolsPanel
+                    character={character}
+                    conditions={compendium.conditions}
+                    isSaving={isSaving}
+                    onToggleCondition={handleConditionToggle}
+                    onDeathSaveChange={handleDeathSaveChange}
+                    onHitDiceChange={handleHitDiceChange}
+                    onInventoryChange={handleInventoryChange}
+                />
+            ) : null}
 
             <FeaturesPanel character={character} features={features} />
         </section>

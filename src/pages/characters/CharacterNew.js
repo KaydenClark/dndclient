@@ -3,8 +3,16 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../context/auth';
 import { createCharacter, fetchCompendiumBootstrap } from '../../lib/api';
-import { ABILITY_ORDER, formatSkillLabel } from './components/characterFormatters';
+import {
+    ABILITY_ORDER,
+    collectLevelFeatureIds,
+    formatSkillLabel,
+    getExpertiseChoiceLimit,
+    unique
+} from './components/characterFormatters';
 import BackgroundField from './components/BackgroundField';
+import { ALIGNMENTS } from './components/characterConstants';
+import ExpertiseSelector from './components/ExpertiseSelector';
 import SkillSelector from './components/SkillSelector';
 
 // Wizard step definitions - order matters, index is the step number.
@@ -16,19 +24,6 @@ const STEPS = [
     'Ability Scores',
     'Skill Selection',
     'Review'
-];
-
-// All nine standard D&D alignments.
-const ALIGNMENTS = [
-    'Lawful Good',
-    'Neutral Good',
-    'Chaotic Good',
-    'Lawful Neutral',
-    'True Neutral',
-    'Chaotic Neutral',
-    'Lawful Evil',
-    'Neutral Evil',
-    'Chaotic Evil'
 ];
 
 // Ability score methods available on the Ability Scores step.
@@ -83,7 +78,8 @@ const initialForm = {
     level: 1,
     scoreMethod: SCORE_METHODS.STANDARD,
     baseAbilityScores: { ...STANDARD_ARRAY },
-    skillProficiencies: []
+    skillProficiencies: [],
+    expertiseProficiencies: []
 };
 
 // Pre-fills race, class, subclass, and background from the first available
@@ -200,21 +196,65 @@ export default function CharacterNew() {
             ...prev,
             classId: nextClassId,
             subclassId: nextSubclasses[0]?.id || '',
-            skillProficiencies: []
+            skillProficiencies: [],
+            expertiseProficiencies: []
         }));
     }
 
     function toggleSkill(skill) {
         setForm((prev) => {
             const isSelected = prev.skillProficiencies.includes(skill);
+            const skillProficiencies = isSelected
+                ? prev.skillProficiencies.filter((s) => s !== skill)
+                : [...prev.skillProficiencies, skill];
 
             return {
                 ...prev,
-                skillProficiencies: isSelected
-                    ? prev.skillProficiencies.filter((s) => s !== skill)
-                    : [...prev.skillProficiencies, skill]
+                skillProficiencies,
+                expertiseProficiencies: prev.expertiseProficiencies.filter((s) => skillProficiencies.includes(s))
             };
         });
+    }
+
+    function toggleExpertise(skill) {
+        setForm((prev) => {
+            const isSelected = prev.expertiseProficiencies.includes(skill);
+
+            return {
+                ...prev,
+                expertiseProficiencies: isSelected
+                    ? prev.expertiseProficiencies.filter((s) => s !== skill)
+                    : [...prev.expertiseProficiencies, skill]
+            };
+        });
+    }
+
+    function getStepError(targetStep = step) {
+        if (targetStep === STEP_NAME && !form.characterName.trim()) {
+            return 'Character name is required.';
+        }
+
+        if (targetStep === STEP_RACE && !form.raceId) {
+            return 'Choose a race before continuing.';
+        }
+
+        if (targetStep === STEP_CLASS && !form.classId) {
+            return 'Choose a class before continuing.';
+        }
+
+        return '';
+    }
+
+    function goToNextStep() {
+        const validationError = getStepError();
+
+        if (validationError) {
+            setError(validationError);
+            return;
+        }
+
+        setError('');
+        setStep((prev) => prev + 1);
     }
 
     // Point buy: increment/decrement a single score within budget and range.
@@ -271,6 +311,15 @@ export default function CharacterNew() {
     }
 
     async function handleCreate() {
+        const stepErrors = [STEP_NAME, STEP_RACE, STEP_CLASS]
+            .map((nextStep) => getStepError(nextStep))
+            .filter(Boolean);
+
+        if (stepErrors.length > 0) {
+            setError(stepErrors[0]);
+            return;
+        }
+
         setIsSaving(true);
         setError('');
 
@@ -286,7 +335,8 @@ export default function CharacterNew() {
                 baseAbilityScores: Object.fromEntries(
                     Object.entries(form.baseAbilityScores).map(([k, v]) => [k, Number(v) || 0])
                 ),
-                skillProficiencies: form.skillProficiencies
+                skillProficiencies: form.skillProficiencies,
+                expertiseProficiencies: form.expertiseProficiencies
             });
 
             // Drop into level-up mode so the player picks spells immediately.
@@ -323,6 +373,9 @@ export default function CharacterNew() {
     // Background-granted skills lock those slots in the SkillSelector so
     // the player does not waste a class pick on a skill they already have.
     const backgroundGrantedSkills = selectedBackground?.skillProficiencies || [];
+    const classFeatureIds = collectLevelFeatureIds(selectedClass?.levelProgression, form.level);
+    const expertiseChoiceLimit = getExpertiseChoiceLimit(classFeatureIds);
+    const expertiseAvailableSkills = unique([...form.skillProficiencies, ...backgroundGrantedSkills]);
 
     const isLastContentStep = step === STEP_SKILLS;
     const isReview = step === STEP_REVIEW;
@@ -377,7 +430,14 @@ export default function CharacterNew() {
                     </div>
                 );
 
-            case STEP_CLASS:
+            case STEP_CLASS: {
+                // Subclass unlock: hide the subclass picker until the starting level
+                // meets the class's subclassLevel threshold (e.g. Fighter=3, Wizard=2, Cleric=1).
+                // subclassLevel absent/null means no gate - show the picker if options exist.
+                const classSubclassLevel = selectedClass?.subclassLevel ?? null;
+                const subclassUnlocked =
+                    classSubclassLevel === null || Number(form.level) >= classSubclassLevel;
+
                 return (
                     <div className="wizard-step">
                         <label className="wizard-step-label">Class</label>
@@ -391,10 +451,21 @@ export default function CharacterNew() {
                                     <option key={classDoc.id} value={classDoc.id}>{classDoc.name}</option>
                                 ))}
                         </select>
-                        {subclassOptions.length > 0 ? (
+                        <label className="wizard-step-label" htmlFor="wizard-starting-level">Starting Level</label>
+                        <input
+                            id="wizard-starting-level"
+                            type="number"
+                            min="1"
+                            max="20"
+                            value={form.level}
+                            aria-label="Starting level"
+                            onChange={(event) => updateField('level', event.target.value)}
+                        />
+                        {subclassOptions.length > 0 && subclassUnlocked ? (
                             <>
                                 <label className="wizard-step-label">Subclass</label>
                                 <select
+                                    aria-label="Subclass"
                                     value={form.subclassId}
                                     onChange={(event) => updateField('subclassId', event.target.value)}
                                 >
@@ -404,16 +475,14 @@ export default function CharacterNew() {
                                 </select>
                             </>
                         ) : null}
-                        <label className="wizard-step-label">Starting Level</label>
-                        <input
-                            type="number"
-                            min="1"
-                            max="20"
-                            value={form.level}
-                            onChange={(event) => updateField('level', event.target.value)}
-                        />
+                        {subclassOptions.length > 0 && !subclassUnlocked ? (
+                            <p className="status-copy">
+                                Subclass picks at level {classSubclassLevel}. Raise starting level to unlock.
+                            </p>
+                        ) : null}
                     </div>
                 );
+            }
 
             case STEP_BACKGROUND:
                 return (
@@ -575,12 +644,20 @@ export default function CharacterNew() {
 
             case STEP_SKILLS:
                 return (
-                    <SkillSelector
-                        skillChoiceRules={selectedClass?.skillChoiceRules}
-                        selectedSkills={form.skillProficiencies}
-                        grantedSkills={backgroundGrantedSkills}
-                        onToggle={toggleSkill}
-                    />
+                    <>
+                        <SkillSelector
+                            skillChoiceRules={selectedClass?.skillChoiceRules}
+                            selectedSkills={form.skillProficiencies}
+                            grantedSkills={backgroundGrantedSkills}
+                            onToggle={toggleSkill}
+                        />
+                        <ExpertiseSelector
+                            availableSkills={expertiseAvailableSkills}
+                            selectedSkills={form.expertiseProficiencies}
+                            maxChoices={expertiseChoiceLimit}
+                            onToggle={toggleExpertise}
+                        />
+                    </>
                 );
 
             case STEP_REVIEW:
@@ -623,12 +700,20 @@ export default function CharacterNew() {
                                     </strong>
                                 </li>
                             ) : null}
+                            {form.expertiseProficiencies.length > 0 ? (
+                                <li>
+                                    <span>Expertise</span>
+                                    <strong>
+                                        {form.expertiseProficiencies.map(formatSkillLabel).join(', ')}
+                                    </strong>
+                                </li>
+                            ) : null}
                             {form.skillProficiencies.length === 0 && backgroundGrantedSkills.length === 0 ? (
                                 <li><span>No skill proficiencies selected yet.</span></li>
                             ) : null}
                         </ul>
 
-                        {error ? <p className="form-error">{error}</p> : null}
+                        {error ? <p className="form-error" role="alert">{error}</p> : null}
                     </div>
                 );
 
@@ -649,7 +734,7 @@ export default function CharacterNew() {
                 </Link>
             </div>
 
-            {error && step !== STEP_REVIEW ? <p className="form-error">{error}</p> : null}
+            {error && step !== STEP_REVIEW ? <p className="form-error" role="alert">{error}</p> : null}
 
             {isLoading ? (
                 <p className="status-copy">Loading character options...</p>
@@ -701,7 +786,7 @@ export default function CharacterNew() {
                             <button
                                 type="button"
                                 className="primary-action"
-                                onClick={() => setStep((prev) => prev + 1)}
+                                onClick={goToNextStep}
                             >
                                 {isLastContentStep ? 'Review' : 'Next'}
                             </button>

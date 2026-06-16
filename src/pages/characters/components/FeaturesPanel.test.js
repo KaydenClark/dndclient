@@ -9,8 +9,10 @@ const fullCharacter = {
     savingThrowProficiencies: ['int', 'wis'],
     skillProficiencies: ['arcana', 'history'],
     backgroundSkillProficiencies: ['perception'],
+    expertiseProficiencies: ['arcana'],
     weaponProficiencies: ['dagger', 'light-crossbow'],
     armorProficiencies: ['light', 'medium'],
+    toolProficiencies: ['thieves-tools', 'herbalism-kit'],
     currency: { cp: 5, sp: 10, ep: 0, gp: 73, pp: 2 },
     traits: 'Curious and methodical.',
     ideals: 'Knowledge is power.',
@@ -56,6 +58,12 @@ describe('FeaturesPanel - proficiency lists', () => {
         expect(screen.getByText('Perception')).toBeInTheDocument();
     });
 
+    test('renders expertise proficiencies as human-readable labels', () => {
+        render(<FeaturesPanel character={fullCharacter} features={[]} />);
+        expect(screen.getByText('Expertise')).toBeInTheDocument();
+        expect(screen.getByText('Arcana')).toBeInTheDocument();
+    });
+
     test('renders weapon proficiencies as formatted slugs', () => {
         render(<FeaturesPanel character={fullCharacter} features={[]} />);
         expect(screen.getByText('Dagger, Light Crossbow')).toBeInTheDocument();
@@ -64,6 +72,24 @@ describe('FeaturesPanel - proficiency lists', () => {
     test('renders armor proficiencies as formatted slugs', () => {
         render(<FeaturesPanel character={fullCharacter} features={[]} />);
         expect(screen.getByText('Light, Medium')).toBeInTheDocument();
+    });
+
+    test('renders tool proficiencies as formatted slugs', () => {
+        render(<FeaturesPanel character={fullCharacter} features={[]} />);
+        expect(screen.getByText('Thieves Tools, Herbalism Kit')).toBeInTheDocument();
+    });
+
+    test('shows "None" for empty tool proficiency list', () => {
+        render(
+            <FeaturesPanel character={{ ...fullCharacter, toolProficiencies: [] }} features={[]} />
+        );
+        expect(screen.getAllByText('None').length).toBeGreaterThanOrEqual(1);
+    });
+
+    test('shows "None" for absent tool proficiency field', () => {
+        const { toolProficiencies: _omit, ...charWithoutTools } = fullCharacter;
+        render(<FeaturesPanel character={charWithoutTools} features={[]} />);
+        expect(screen.getAllByText('None').length).toBeGreaterThanOrEqual(1);
     });
 
     test('shows "None" for empty language list', () => {

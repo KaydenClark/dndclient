@@ -180,6 +180,39 @@ describe('SpellPanel - spell slots', () => {
         );
         expect(screen.getByRole('heading', { name: /spell slots/i })).toBeInTheDocument();
     });
+
+    test('shows short-rest recovery for pact casters', () => {
+        render(
+            <SpellPanel
+                cantrips={[]}
+                preparedSpells={[]}
+                knownSpells={[]}
+                spellSlots={fullSlots}
+                spellcasting={{ restRecovery: 'short' }}
+            />
+        );
+        expect(screen.getByText(/recovers on: short rest/i)).toBeInTheDocument();
+    });
+
+    test('shows long-rest recovery for normal casters', () => {
+        render(
+            <SpellPanel
+                cantrips={[]}
+                preparedSpells={[]}
+                knownSpells={[]}
+                spellSlots={fullSlots}
+                spellcasting={{ restRecovery: 'long' }}
+            />
+        );
+        expect(screen.getByText(/recovers on: long rest/i)).toBeInTheDocument();
+    });
+
+    test('does not show recovery copy when rest recovery is missing', () => {
+        render(
+            <SpellPanel cantrips={[]} preparedSpells={[]} knownSpells={[]} spellSlots={fullSlots} />
+        );
+        expect(screen.queryByText(/recovers on:/i)).not.toBeInTheDocument();
+    });
 });
 
 describe('SpellPanel - headings', () => {

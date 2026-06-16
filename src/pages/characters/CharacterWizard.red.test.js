@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { vi } from 'vitest';
 
 import CharacterNew from './CharacterNew';
-import { fetchCompendiumBootstrap } from '../../lib/api';
+import { createCharacter, fetchCompendiumBootstrap } from '../../lib/api';
 
 vi.mock('../../context/auth', () => ({
     useAuth: () => ({
@@ -65,6 +65,14 @@ async function advanceTo(targetStep) {
     const steps = ['Name', 'Race', 'Class', 'Background and Alignment', 'Ability Scores', 'Skill Selection', 'Review'];
     const targetIndex = steps.indexOf(targetStep);
 
+    if (targetIndex > 0) {
+        const nameInput = screen.queryByPlaceholderText(/character name/i);
+
+        if (nameInput && !nameInput.value) {
+            fireEvent.change(nameInput, { target: { value: 'Test Hero' } });
+        }
+    }
+
     for (let i = 0; i < targetIndex; i++) {
         fireEvent.click(screen.getByRole('button', { name: /next|review/i }));
         await waitFor(() => {
@@ -117,6 +125,44 @@ test('guides character creation through the planned wizard steps before review',
     expect(screen.getByText(/proficiency summary/i)).toBeInTheDocument();
     expect(screen.getByText(/soldier/i)).toBeInTheDocument();
     expect(screen.getByText(/athletics/i)).toBeInTheDocument();
+});
+
+test('skill step supports expertise choices and submits them', async () => {
+    createCharacter.mockResolvedValue({ _id: 'created-character-id' });
+    await renderWizard({
+        races: [{ id: 'human', name: 'Human', raceGroup: 'Human' }],
+        classes: [{
+            id: 'rogue',
+            name: 'Rogue',
+            skillChoiceRules: { choose: 2, options: ['acrobatics', 'stealth', 'perception'] },
+            levelProgression: { 1: { featureIds: ['expertise'] } }
+        }],
+        subclasses: [],
+        backgrounds: [{ id: 'criminal', name: 'Criminal', skillProficiencies: ['deception', 'stealth'] }]
+    });
+
+    await advanceTo('Skill Selection');
+
+    fireEvent.click(screen.getByLabelText(/acrobatics/i));
+    const expertiseSection = screen.getByText(/expertise \(0\/2 chosen\)/i).closest('.weapon-picker');
+    fireEvent.click(within(expertiseSection).getByLabelText(/acrobatics/i));
+    fireEvent.click(within(expertiseSection).getByLabelText(/stealth/i));
+    fireEvent.click(screen.getByRole('button', { name: /review/i }));
+
+    expect(screen.getByText(/^expertise$/i)).toBeInTheDocument();
+    expect(screen.getByText(/acrobatics, stealth/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /create character/i }));
+
+    await waitFor(() => {
+        expect(createCharacter).toHaveBeenCalledWith(
+            'test-token',
+            expect.objectContaining({
+                skillProficiencies: ['acrobatics'],
+                expertiseProficiencies: ['acrobatics', 'stealth']
+            })
+        );
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -378,4 +424,97 @@ test('switching methods resets scores - Point Buy resets to all 8s', async () =>
         const strScore = screen.getByLabelText(/str score/i);
         expect(strScore.textContent).toBe('8');
     });
+});
+
+// ---------------------------------------------------------------------------
+// Class step: subclass early-gate
+// ---------------------------------------------------------------------------
+
+const BOOTSTRAP_WITH_SUBCLASSES = {
+    ...MOCK_BOOTSTRAP,
+    classes: [{
+        id: 'fighter',
+        name: 'Fighter',
+        subclassLevel: 3,
+        skillChoiceRules: { choose: 2, options: ['athletics', 'intimidation'] }
+    }],
+    subclasses: [{ id: 'champion', classId: 'fighter', name: 'Champion' }]
+};
+
+test('class step hides subclass select when starting level is below subclassLevel', async () => {
+    await renderWizard(BOOTSTRAP_WITH_SUBCLASSES);
+    await advanceTo('Class');
+
+    // Default level is 1; Fighter subclassLevel is 3 - subclass should be gated.
+    expect(screen.queryByRole('combobox', { name: /subclass/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/subclass picks at level 3/i)).toBeInTheDocument();
+});
+
+test('class step shows subclass select when starting level meets subclassLevel', async () => {
+    await renderWizard(BOOTSTRAP_WITH_SUBCLASSES);
+    await advanceTo('Class');
+
+    // Raise level to 3 to unlock the subclass picker.
+    const levelInput = screen.getByLabelText(/starting level/i);
+    fireEvent.change(levelInput, { target: { value: '3' } });
+
+    await waitFor(() => {
+        expect(screen.getByText(/subclass/i, { selector: 'label' })).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/subclass picks at level 3/i)).not.toBeInTheDocument();
+});
+
+test('class step shows subclass immediately for a class with subclassLevel 1', async () => {
+    await renderWizard({
+        ...MOCK_BOOTSTRAP,
+        classes: [{
+            id: 'cleric',
+            name: 'Cleric',
+            subclassLevel: 1,
+            skillChoiceRules: { choose: 2, options: ['history', 'insight'] }
+        }],
+        subclasses: [{ id: 'life-domain', classId: 'cleric', name: 'Life Domain' }]
+    });
+    await advanceTo('Class');
+
+    // Default level is 1 and Cleric unlocks at 1 - should show immediately.
+    expect(screen.getByText(/subclass/i, { selector: 'label' })).toBeInTheDocument();
+    expect(screen.queryByText(/subclass picks at level/i)).not.toBeInTheDocument();
+});
+
+test('class step shows no subclass UI when class has no subclasses', async () => {
+    // MOCK_BOOTSTRAP has no subclasses.
+    await renderWizard(MOCK_BOOTSTRAP);
+    await advanceTo('Class');
+
+    expect(screen.queryByText(/subclass/i, { selector: 'label' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/subclass picks at level/i)).not.toBeInTheDocument();
+});
+
+test('blocks next navigation when a required step is incomplete', async () => {
+    await renderWizard();
+
+    fireEvent.click(screen.getByRole('button', { name: /next/i }));
+
+    expect(screen.getByRole('tab', { name: /name/i })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('alert')).toHaveTextContent(/character name is required/i);
+});
+
+test('back navigation and tab jumps preserve wizard state', async () => {
+    await renderWizard();
+
+    fireEvent.change(screen.getByPlaceholderText(/character name/i), {
+        target: { value: 'Brim' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: /next/i }));
+    fireEvent.click(screen.getByRole('button', { name: /back/i }));
+
+    expect(screen.getByPlaceholderText(/character name/i)).toHaveValue('Brim');
+
+    fireEvent.click(screen.getByRole('tab', { name: /ability scores/i }));
+    fireEvent.click(screen.getByRole('button', { name: /point buy/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /name/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /ability scores/i }));
+
+    expect(screen.getByRole('button', { name: /point buy/i })).toHaveAttribute('aria-pressed', 'true');
 });

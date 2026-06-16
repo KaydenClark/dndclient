@@ -80,6 +80,36 @@ export function unique(values) {
     return [...new Set((values || []).filter(Boolean))];
 }
 
+export function collectLevelFeatureIds(levelProgression, level) {
+    if (!levelProgression) {
+        return [];
+    }
+
+    const currentLevel = clampLevel(level);
+
+    return Object.entries(levelProgression)
+        .filter(([requiredLevel]) => currentLevel >= Number(requiredLevel))
+        .flatMap(([, entry]) => {
+            if (Array.isArray(entry)) {
+                return entry;
+            }
+
+            return entry?.featureIds || [];
+        });
+}
+
+export function getExpertiseChoiceLimit(featureIds = []) {
+    const featureSet = new Set(featureIds || []);
+    let limit = 0;
+
+    if (featureSet.has('expertise')) limit += 2;
+    if (featureSet.has('bard-expertise')) limit += 2;
+    if (featureSet.has('bard-expertise-2')) limit += 2;
+    if (featureSet.has('ranger-expertise')) limit += 1;
+
+    return limit;
+}
+
 // Sorts spells by level, then alphabetically by name.
 export function sortSpells(spells) {
     return [...spells].sort((left, right) => {

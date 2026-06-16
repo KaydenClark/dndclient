@@ -22,6 +22,7 @@ function renderCombat(props = {}) {
             character={baseCharacter}
             showHpControls={false}
             onHpChange={vi.fn()}
+            onTempHpChange={vi.fn()}
             isSaving={false}
             {...props}
         />
@@ -90,6 +91,108 @@ describe('CombatStats - stat tiles', () => {
     test('shows Spell Attack tile when spellAttackBonus is 0', () => {
         renderCombat({ character: { ...baseCharacter, spellAttackBonus: 0 } });
         expect(screen.getByText('Spell Attack')).toBeInTheDocument();
+    });
+});
+
+describe('CombatStats - HP bar', () => {
+    test('renders an HP progress bar element', () => {
+        renderCombat();
+        expect(screen.getByRole('progressbar', { name: /hit points/i })).toBeInTheDocument();
+    });
+
+    test('HP bar aria-valuenow matches currentHp', () => {
+        renderCombat();
+        const bar = screen.getByRole('progressbar', { name: /hit points/i });
+        expect(bar).toHaveAttribute('aria-valuenow', '20');
+    });
+
+    test('HP bar aria-valuemax matches maxHp', () => {
+        renderCombat();
+        const bar = screen.getByRole('progressbar', { name: /hit points/i });
+        expect(bar).toHaveAttribute('aria-valuemax', '30');
+    });
+
+    test('HP bar fill has hp-bar-ok class at full health', () => {
+        const { container } = renderCombat({
+            character: { ...baseCharacter, currentHp: 30, maxHp: 30 }
+        });
+        expect(container.querySelector('.hp-bar-fill')).toHaveClass('hp-bar-ok');
+    });
+
+    test('HP bar fill has hp-bar-low class below 50%', () => {
+        const { container } = renderCombat({
+            character: { ...baseCharacter, currentHp: 14, maxHp: 30 }
+        });
+        expect(container.querySelector('.hp-bar-fill')).toHaveClass('hp-bar-low');
+    });
+
+    test('HP bar fill has hp-bar-critical class below 25%', () => {
+        const { container } = renderCombat({
+            character: { ...baseCharacter, currentHp: 5, maxHp: 30 }
+        });
+        expect(container.querySelector('.hp-bar-fill')).toHaveClass('hp-bar-critical');
+    });
+});
+
+describe('CombatStats - Temp HP tile', () => {
+    test('Temp HP tile is not shown when tempHp is 0', () => {
+        renderCombat({ character: { ...baseCharacter, tempHp: 0 } });
+        expect(screen.queryByText('Temp HP')).not.toBeInTheDocument();
+    });
+
+    test('Temp HP tile is not shown when tempHp is absent', () => {
+        renderCombat();
+        expect(screen.queryByText('Temp HP')).not.toBeInTheDocument();
+    });
+
+    test('Temp HP tile shows when tempHp is greater than 0', () => {
+        renderCombat({ character: { ...baseCharacter, tempHp: 8 } });
+        expect(screen.getByText('Temp HP')).toBeInTheDocument();
+        expect(screen.getByText('8')).toBeInTheDocument();
+    });
+});
+
+describe('CombatStats - Temp HP controls', () => {
+    test('Temp HP tracker renders when showHpControls is true', () => {
+        renderCombat({ showHpControls: true });
+        expect(screen.getByLabelText(/temporary hit points/i)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /^set$/i })).toBeInTheDocument();
+    });
+
+    test('Set button calls onTempHpChange with the entered value', () => {
+        const onTempHpChange = vi.fn();
+        renderCombat({ showHpControls: true, onTempHpChange });
+        const input = screen.getByLabelText(/temporary hit points/i);
+        fireEvent.change(input, { target: { value: '10' } });
+        fireEvent.click(screen.getByRole('button', { name: /^set$/i }));
+        expect(onTempHpChange).toHaveBeenCalledWith(10);
+    });
+
+    test('Set button clamps negative input to 0', () => {
+        const onTempHpChange = vi.fn();
+        renderCombat({ showHpControls: true, onTempHpChange });
+        const input = screen.getByLabelText(/temporary hit points/i);
+        fireEvent.change(input, { target: { value: '-5' } });
+        fireEvent.click(screen.getByRole('button', { name: /^set$/i }));
+        expect(onTempHpChange).toHaveBeenCalledWith(0);
+    });
+
+    test('Set button is disabled when isSaving', () => {
+        renderCombat({ showHpControls: true, isSaving: true });
+        expect(screen.getByRole('button', { name: /^set$/i })).toBeDisabled();
+    });
+
+    test('shows "No temp HP" label when tempHp is 0', () => {
+        renderCombat({ showHpControls: true });
+        expect(screen.getByText(/no temp hp/i)).toBeInTheDocument();
+    });
+
+    test('shows active temp HP label when tempHp is set', () => {
+        renderCombat({
+            showHpControls: true,
+            character: { ...baseCharacter, tempHp: 8 }
+        });
+        expect(screen.getByText(/8 temp hp active/i)).toBeInTheDocument();
     });
 });
 
